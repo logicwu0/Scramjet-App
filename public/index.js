@@ -52,11 +52,16 @@ form.addEventListener("submit", async (event) => {
 		"://" +
 		location.host +
 		"/wisp/";
-	// To trust a self-signed certificate, paste its PEM content here:
-	// const cacert = `-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----`;
-	const cacert = undefined;
+	// Load custom CA certificate from server (place your .pem file in certs/cacert.pem)
+	let cacert;
+	try {
+		const res = await fetch("/api/cacert");
+		if (res.ok) cacert = await res.text();
+	} catch (e) {}
+	console.log("[cacert] loaded:", cacert ? cacert.substring(0, 40) + "..." : "none");
 	const transportOpts = { websocket: wispUrl };
 	if (cacert) transportOpts.cacert = cacert;
+	console.log("[cacert] transportOpts keys:", Object.keys(transportOpts));
 	await connection.setTransport("/libcurl/index.mjs", [transportOpts]);
 	const frame = scramjet.createFrame();
 	frame.frame.id = "sj-frame";

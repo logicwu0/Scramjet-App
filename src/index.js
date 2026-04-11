@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "url";
 import { hostname } from "node:os";
 import { server as wisp, logging } from "@mercuryworkshop/wisp-js/server";
@@ -10,12 +11,14 @@ import { libcurlPath } from "@mercuryworkshop/libcurl-transport";
 import { baremuxPath } from "@mercuryworkshop/bare-mux/node";
 
 const publicPath = fileURLToPath(new URL("../public/", import.meta.url));
+const certsPath = fileURLToPath(new URL("../certs/cacert.pem", import.meta.url));
 
 // Wisp Configuration: Refer to the documentation at https://www.npmjs.com/package/@mercuryworkshop/wisp-js
 
 logging.set_level(logging.NONE);
 Object.assign(wisp.options, {
 	allow_udp_streams: false,
+	allow_loopback_ips: true,
 	hostname_blacklist: [/example\.com/],
 	dns_servers: ["1.1.1.3", "1.0.0.3"],
 });
@@ -56,6 +59,14 @@ fastify.register(fastifyStatic, {
 	root: baremuxPath,
 	prefix: "/baremux/",
 	decorateReply: false,
+});
+
+fastify.get("/api/cacert", (req, reply) => {
+	if (existsSync(certsPath)) {
+		const pem = readFileSync(certsPath, "utf-8");
+		return reply.type("text/plain").send(pem);
+	}
+	return reply.code(404).send("No custom CA certificate configured");
 });
 
 fastify.setNotFoundHandler((res, reply) => {
