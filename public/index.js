@@ -52,11 +52,12 @@ form.addEventListener("submit", async (event) => {
 		"://" +
 		location.host +
 		"/wisp/";
-	if ((await connection.getTransport()) !== "/libcurl/index.mjs") {
-		await connection.setTransport("/libcurl/index.mjs", [
-			{ websocket: wispUrl },
-		]);
-	}
+	// To trust a self-signed certificate, paste its PEM content here:
+	// const cacert = `-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----`;
+	const cacert = undefined;
+	const transportOpts = { websocket: wispUrl };
+	if (cacert) transportOpts.cacert = cacert;
+	await connection.setTransport("/libcurl/index.mjs", [transportOpts]);
 	const frame = scramjet.createFrame();
 	frame.frame.id = "sj-frame";
 	document.body.appendChild(frame.frame);
