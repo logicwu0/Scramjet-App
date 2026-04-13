@@ -58,7 +58,7 @@ form.addEventListener("submit", async (event) => {
 		const res = await fetch("/api/cacert");
 		if (res.ok) cacert = await res.text();
 	} catch (e) {}
-	const transportOpts = { websocket: wispUrl };
+	const transportOpts = { websocket: wispUrl, verbose: true };
 	if (cacert) transportOpts.cacert = cacert;
 	await connection.setTransport("/libcurl/index.mjs", [transportOpts]);
 	const frame = scramjet.createFrame();
