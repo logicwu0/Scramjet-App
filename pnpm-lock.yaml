@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@mercuryworkshop/epoxy-transport@2.1.28':
+    hash: 690d8d410c0f938768e3fe30d3774162de22b3ae604586ee66a7a1e0fab6effc
+    path: patches/@mercuryworkshop__epoxy-transport@2.1.28.patch
+
 importers:
 
   .:
@@ -14,9 +19,12 @@ importers:
       '@mercuryworkshop/bare-mux':
         specifier: ^2.1.7
         version: 2.1.7
+      '@mercuryworkshop/epoxy-transport':
+        specifier: ^2.1.28
+        version: 2.1.28(patch_hash=690d8d410c0f938768e3fe30d3774162de22b3ae604586ee66a7a1e0fab6effc)
       '@mercuryworkshop/libcurl-transport':
-        specifier: file:../libcurl-transport
-        version: file:../libcurl-transport
+        specifier: github:logicwu0/libcurl-transport
+        version: https://codeload.github.com/logicwu0/libcurl-transport/tar.gz/cc3a225dec598054e4a7247fb284252d9a311516
       '@mercuryworkshop/scramjet':
         specifier: https://github.com/MercuryWorkshop/scramjet/releases/download/latest/mercuryworkshop-scramjet-2.0.0-alpha.tgz
         version: https://github.com/MercuryWorkshop/scramjet/releases/download/latest/mercuryworkshop-scramjet-2.0.0-alpha.tgz
@@ -127,8 +135,15 @@ packages:
   '@mercuryworkshop/bare-mux@2.1.7':
     resolution: {integrity: sha512-BUamyc7jsIFbWQVVWjVjaD+Wot77EPwolkrbP3UuIs6QeHR1RY52+IR2fq3GkRAbOOrAZNT7EgZSsupkh1NowQ==}
 
-  '@mercuryworkshop/libcurl-transport@file:../libcurl-transport':
-    resolution: {directory: ../libcurl-transport, type: directory}
+  '@mercuryworkshop/epoxy-tls@2.1.18-1':
+    resolution: {integrity: sha512-2N1BYn/+FJxIbRw+sipbl3mQPinRflqQDB9HGAXJEVj4Ok4FIlTlS4fO2cpXKEq5yoD3oaKb8GyNaQfndNui9w==}
+
+  '@mercuryworkshop/epoxy-transport@2.1.28':
+    resolution: {integrity: sha512-lv/Kfdn37y8ZCXQaIT3Ebj4OSztBqeXdbR9rchbHQBKIw/fNSQJLGNBHV5ScXSzqt7NCwv8ZiZx7urRyk7Ua/Q==}
+
+  '@mercuryworkshop/libcurl-transport@https://codeload.github.com/logicwu0/libcurl-transport/tar.gz/cc3a225dec598054e4a7247fb284252d9a311516':
+    resolution: {tarball: https://codeload.github.com/logicwu0/libcurl-transport/tar.gz/cc3a225dec598054e4a7247fb284252d9a311516}
+    version: 2.0.5
 
   '@mercuryworkshop/scramjet@https://github.com/MercuryWorkshop/scramjet/releases/download/latest/mercuryworkshop-scramjet-2.0.0-alpha.tgz':
     resolution: {tarball: https://github.com/MercuryWorkshop/scramjet/releases/download/latest/mercuryworkshop-scramjet-2.0.0-alpha.tgz}
@@ -899,7 +914,13 @@ snapshots:
 
   '@mercuryworkshop/bare-mux@2.1.7': {}
 
-  '@mercuryworkshop/libcurl-transport@file:../libcurl-transport':
+  '@mercuryworkshop/epoxy-tls@2.1.18-1': {}
+
+  '@mercuryworkshop/epoxy-transport@2.1.28(patch_hash=690d8d410c0f938768e3fe30d3774162de22b3ae604586ee66a7a1e0fab6effc)':
+    dependencies:
+      '@mercuryworkshop/epoxy-tls': 2.1.18-1
+
+  '@mercuryworkshop/libcurl-transport@https://codeload.github.com/logicwu0/libcurl-transport/tar.gz/cc3a225dec598054e4a7247fb284252d9a311516':
     dependencies:
       libcurl.js: 0.7.4
 

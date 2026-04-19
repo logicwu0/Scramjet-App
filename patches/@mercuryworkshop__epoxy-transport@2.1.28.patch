@@ -1,0 +1,15 @@
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 9f103e46c4b79b25e5a51131763abeed6f6fce12..96fb36dc68005163749282789183ab950c1db3dd 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -1466,7 +1466,9 @@ var opts = [
+   "wisp_ws_protocols",
+   "redirect_limit",
+   "header_limit",
+-  "buffer_size"
++  "buffer_size",
++  "pem_files",
++  "disable_certificate_validation"
+ ];
+ var EpoxyTransport = class {
+   ready = false;

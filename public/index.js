@@ -53,14 +53,18 @@ form.addEventListener("submit", async (event) => {
 		location.host +
 		"/wisp/";
 	// Load custom CA certificate from server (place your .pem file in certs/cacert.pem)
-	let cacert;
+	const pemFiles = [];
 	try {
 		const res = await fetch("/api/cacert");
-		if (res.ok) cacert = await res.text();
+		if (res.ok) pemFiles.push(await res.text());
 	} catch (e) {}
-	const transportOpts = { websocket: wispUrl, verbose: true };
-	if (cacert) transportOpts.cacert = cacert;
-	await connection.setTransport("/libcurl/index.mjs", [transportOpts]);
+	// libcurl transport (commented out — switched to epoxy for large cert support)
+	// const transportOpts = { websocket: wispUrl, verbose: true };
+	// if (pemFiles[0]) transportOpts.cacert = pemFiles[0];
+	// await connection.setTransport("/libcurl/index.mjs", [transportOpts]);
+	await connection.setTransport("/epoxy/index.mjs", [
+		{ wisp: wispUrl, pem_files: pemFiles },
+	]);
 	const frame = scramjet.createFrame();
 	frame.frame.id = "sj-frame";
 	document.body.appendChild(frame.frame);

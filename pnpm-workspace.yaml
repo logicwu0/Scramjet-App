@@ -1,2 +1,5 @@
 onlyBuiltDependencies:
   - '@mercuryworkshop/scramjet'
+
+patchedDependencies:
+  '@mercuryworkshop/epoxy-transport@2.1.28': patches/@mercuryworkshop__epoxy-transport@2.1.28.patch
