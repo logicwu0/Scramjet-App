@@ -18,10 +18,10 @@ const certsPath = fileURLToPath(new URL("../certs/cacert.pem", import.meta.url))
 
 logging.set_level(logging.NONE);
 Object.assign(wisp.options, {
-	allow_udp_streams: false,
+	allow_udp_streams: true,
 	allow_loopback_ips: true,
 	hostname_blacklist: [/example\.com/],
-	dns_servers: ["1.1.1.3", "1.0.0.3"],
+	// dns_servers: ["1.1.1.3", "1.0.0.3"], // 使用系统 DNS，兼容 MITM 网关的解析
 });
 
 const fastify = Fastify({
