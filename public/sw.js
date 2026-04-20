@@ -3,6 +3,25 @@ importScripts("/scram/scramjet.all.js");
 const { ScramjetServiceWorker } = $scramjetLoadWorker();
 const scramjet = new ScramjetServiceWorker();
 
+function dumpError(prefix, err) {
+	if (!err) {
+		console.error(`${prefix} <no error object>`);
+		return;
+	}
+	const info = {
+		name: err.name,
+		message: err.message,
+		ctor: err.constructor && err.constructor.name,
+		stack: err.stack,
+	};
+	try {
+		info.keys = Object.keys(err);
+		info.string = String(err);
+	} catch (_) {}
+	console.error(`${prefix}`, info);
+	if (err.cause) dumpError(`${prefix} [cause]`, err.cause);
+}
+
 async function handleRequest(event) {
 	await scramjet.loadConfig();
 	const url = event.request.url;
@@ -13,11 +32,18 @@ async function handleRequest(event) {
 		console.log(`[SW] <- ${res.status} ${url}`);
 		return res;
 	} catch (err) {
-		console.error(`[SW] FAIL ${url}:`, err && err.message ? err.message : err);
+		dumpError(`[SW] FAIL ${url}`, err);
 		throw err;
 	}
 }
 
 self.addEventListener("fetch", (event) => {
 	event.respondWith(handleRequest(event));
+});
+
+self.addEventListener("unhandledrejection", (ev) => {
+	dumpError("[SW] unhandledrejection", ev.reason);
+});
+self.addEventListener("error", (ev) => {
+	dumpError("[SW] error", ev.error || ev.message);
 });

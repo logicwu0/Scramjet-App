@@ -77,7 +77,13 @@ form.addEventListener("submit", async (event) => {
 		]);
 		console.log("[transport] epoxy set OK");
 	} catch (err) {
-		console.error("[transport] setTransport failed:", err);
+		console.error("[transport] setTransport failed:", {
+			name: err && err.name,
+			message: err && err.message,
+			ctor: err && err.constructor && err.constructor.name,
+			stack: err && err.stack,
+			cause: err && err.cause,
+		});
 		error.textContent = "Failed to set transport.";
 		errorCode.textContent = err && err.toString ? err.toString() : String(err);
 		throw err;
@@ -87,4 +93,15 @@ form.addEventListener("submit", async (event) => {
 	frame.frame.id = "sj-frame";
 	document.body.appendChild(frame.frame);
 	frame.go(url);
+});
+
+window.addEventListener("unhandledrejection", (ev) => {
+	const r = ev.reason;
+	console.error("[page] unhandledrejection", {
+		name: r && r.name,
+		message: r && r.message,
+		ctor: r && r.constructor && r.constructor.name,
+		stack: r && r.stack,
+		cause: r && r.cause,
+	});
 });
