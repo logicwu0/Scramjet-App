@@ -16,7 +16,7 @@ const certsPath = fileURLToPath(new URL("../certs/cacert.pem", import.meta.url))
 
 // Wisp Configuration: Refer to the documentation at https://www.npmjs.com/package/@mercuryworkshop/wisp-js
 
-logging.set_level(logging.NONE);
+logging.set_level(logging.DEBUG);
 Object.assign(wisp.options, {
 	allow_udp_streams: true,
 	allow_loopback_ips: true,
@@ -71,8 +71,10 @@ fastify.register(fastifyStatic, {
 fastify.get("/api/cacert", (req, reply) => {
 	if (existsSync(certsPath)) {
 		const pem = readFileSync(certsPath, "utf-8");
+		console.log(`[cacert] served ${pem.length} bytes to ${req.ip}`);
 		return reply.type("text/plain").send(pem);
 	}
+	console.log(`[cacert] no cert configured (requested by ${req.ip})`);
 	return reply.code(404).send("No custom CA certificate configured");
 });
 

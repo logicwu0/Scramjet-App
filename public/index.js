@@ -56,15 +56,33 @@ form.addEventListener("submit", async (event) => {
 	const pemFiles = [];
 	try {
 		const res = await fetch("/api/cacert");
-		if (res.ok) pemFiles.push(await res.text());
-	} catch (e) {}
+		if (res.ok) {
+			const pem = await res.text();
+			pemFiles.push(pem);
+			console.log(`[cacert] loaded ${pem.length} bytes from /api/cacert`);
+		} else {
+			console.log(`[cacert] /api/cacert returned ${res.status}`);
+		}
+	} catch (e) {
+		console.warn("[cacert] fetch failed:", e);
+	}
 	// libcurl transport (commented out — switched to epoxy for large cert support)
 	// const transportOpts = { websocket: wispUrl, verbose: true };
 	// if (pemFiles[0]) transportOpts.cacert = pemFiles[0];
 	// await connection.setTransport("/libcurl/index.mjs", [transportOpts]);
-	await connection.setTransport("/epoxy/index.mjs", [
-		{ wisp: wispUrl, pem_files: pemFiles },
-	]);
+	console.log(`[transport] setting epoxy, wisp=${wispUrl}, pem_files=${pemFiles.length}`);
+	try {
+		await connection.setTransport("/epoxy/index.mjs", [
+			{ wisp: wispUrl, pem_files: pemFiles },
+		]);
+		console.log("[transport] epoxy set OK");
+	} catch (err) {
+		console.error("[transport] setTransport failed:", err);
+		error.textContent = "Failed to set transport.";
+		errorCode.textContent = err && err.toString ? err.toString() : String(err);
+		throw err;
+	}
+	console.log(`[nav] go -> ${url}`);
 	const frame = scramjet.createFrame();
 	frame.frame.id = "sj-frame";
 	document.body.appendChild(frame.frame);

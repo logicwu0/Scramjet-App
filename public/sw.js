@@ -5,10 +5,17 @@ const scramjet = new ScramjetServiceWorker();
 
 async function handleRequest(event) {
 	await scramjet.loadConfig();
-	if (scramjet.route(event)) {
-		return scramjet.fetch(event);
+	const url = event.request.url;
+	const routed = scramjet.route(event);
+	console.log(`[SW] ${event.request.method} ${url} routed=${routed}`);
+	try {
+		const res = routed ? await scramjet.fetch(event) : await fetch(event.request);
+		console.log(`[SW] <- ${res.status} ${url}`);
+		return res;
+	} catch (err) {
+		console.error(`[SW] FAIL ${url}:`, err && err.message ? err.message : err);
+		throw err;
 	}
-	return fetch(event.request);
 }
 
 self.addEventListener("fetch", (event) => {
