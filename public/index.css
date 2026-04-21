@@ -157,3 +157,212 @@ footer a:hover {
 .credit input:checked ~ pre {
 	display: block;
 }
+
+/* === Landing page (custom) === */
+.landing {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 0 24px;
+	min-height: 100vh;
+	box-sizing: border-box;
+	background:
+		radial-gradient(
+			ellipse 80% 60% at 50% 0%,
+			rgba(0, 188, 212, 0.18) 0%,
+			rgba(0, 188, 212, 0) 70%
+		),
+		radial-gradient(
+			ellipse 70% 50% at 85% 90%,
+			rgba(129, 212, 250, 0.22) 0%,
+			rgba(129, 212, 250, 0) 70%
+		),
+		linear-gradient(135deg, #fafdfe 0%, #f0f7f9 100%);
+	position: relative;
+}
+
+.landing-header {
+	text-align: center;
+	margin-top: 22vh;
+	margin-bottom: 3rem;
+	position: relative;
+}
+
+.landing-title {
+	font-size: 3.75rem;
+	font-weight: 500;
+	margin: 0 0 1rem;
+	letter-spacing: 0.04em;
+	line-height: 1.25;
+	background: linear-gradient(135deg, #0f3a42 0%, #00838f 55%, #00acc1 100%);
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	color: transparent;
+}
+
+.landing-subtitle {
+	font-size: 1.6rem;
+	color: #00838f;
+	margin: 0;
+	letter-spacing: 0.08em;
+	opacity: 0.85;
+}
+
+.landing-form {
+	width: 100%;
+	max-width: 560px;
+	margin-bottom: 2.4rem;
+	display: flex;
+	justify-content: center;
+}
+
+.landing-form #sj-address {
+	width: 100%;
+	max-width: 560px;
+	margin-top: 0;
+	height: 60px;
+	font-size: 1.05rem;
+	color: #1a1a1a;
+	border: 1px solid rgba(0, 0, 0, 0.08);
+	background: rgba(255, 255, 255, 0.75);
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
+	box-shadow:
+		0 1px 2px rgba(0, 0, 0, 0.04),
+		0 8px 24px rgba(0, 131, 143, 0.08);
+	transition:
+		border-color 0.2s,
+		box-shadow 0.2s,
+		background 0.2s;
+}
+
+.landing-form #sj-address::placeholder {
+	color: rgba(0, 0, 0, 0.35);
+}
+
+.landing-form #sj-address:focus {
+	border: 1px solid rgba(0, 131, 143, 0.5);
+	background: #fff;
+	box-shadow:
+		0 1px 2px rgba(0, 0, 0, 0.04),
+		0 12px 32px rgba(0, 131, 143, 0.15);
+	border-radius: 50px;
+}
+
+.landing-examples {
+	width: 100%;
+	max-width: 720px;
+	text-align: center;
+}
+
+.landing-examples-hint {
+	color: rgba(0, 0, 0, 0.45);
+	font-size: 1rem;
+	margin: 0 0 1.2rem;
+	letter-spacing: 0.06em;
+}
+
+.landing-chips {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 0.6rem;
+}
+
+.chip {
+	background: rgba(255, 255, 255, 0.7);
+	backdrop-filter: blur(6px);
+	-webkit-backdrop-filter: blur(6px);
+	border: 1px solid rgba(0, 0, 0, 0.08);
+	color: rgba(0, 0, 0, 0.7);
+	padding: 0.65rem 1.4rem;
+	border-radius: 999px;
+	cursor: pointer;
+	font-size: 1rem;
+	font-family: inherit;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+	transition:
+		border-color 0.2s,
+		color 0.2s,
+		background 0.2s,
+		transform 0.15s,
+		box-shadow 0.2s;
+}
+
+.chip:hover {
+	border-color: rgba(0, 131, 143, 0.4);
+	color: #00838f;
+	background: #fff;
+	transform: translateY(-1px);
+	box-shadow: 0 4px 12px rgba(0, 131, 143, 0.15);
+}
+
+.chip:active {
+	transform: translateY(0);
+}
+
+.landing-error {
+	margin-top: 2rem;
+	text-align: center;
+	min-height: 2rem;
+	width: 100%;
+	max-width: 560px;
+}
+
+.landing-error #sj-error {
+	margin: 0;
+	color: #d32f2f !important;
+}
+
+.landing-error #sj-error-code {
+	margin: 0.5rem 0 0;
+	white-space: pre-wrap;
+	color: #555;
+}
+
+/* === 404 page === */
+.landing-404 {
+	text-align: center;
+	margin-top: 18vh;
+}
+
+.landing-404-code {
+	font-size: 6rem;
+	font-weight: 300;
+	color: #00838f;
+	letter-spacing: 0.1em;
+	margin-bottom: 0.5rem;
+	line-height: 1;
+}
+
+.landing-404-title {
+	font-size: 1.8rem;
+	font-weight: 400;
+	color: #1a1a1a;
+	margin: 0 0 0.6rem;
+}
+
+.landing-404-subtitle {
+	color: rgba(0, 0, 0, 0.5);
+	font-size: 1rem;
+	margin: 0 0 2rem;
+}
+
+.landing-404-back {
+	display: inline-block;
+	padding: 0.6rem 1.5rem;
+	border: 1px solid rgba(0, 0, 0, 0.2);
+	border-radius: 999px;
+	color: #1a1a1a;
+	text-decoration: none;
+	font-size: 0.95rem;
+	transition:
+		border-color 0.15s,
+		color 0.15s;
+}
+
+.landing-404-back:hover {
+	border-color: #00838f;
+	color: #00838f;
+}
