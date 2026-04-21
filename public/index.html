@@ -42,6 +42,13 @@
 			</form>
 
 			<section class="landing-examples">
+				<div class="landing-featured">
+					<button type="button" class="featured-card" data-url="https://scholar.cngi.edu.cn/">
+						<span class="featured-badge">推荐</span>
+						<span class="featured-title">CERNET 学术网址导航</span>
+						<span class="featured-arrow">→</span>
+					</button>
+				</div>
 				<p class="landing-examples-hint">常用学术与研究资源</p>
 				<div class="landing-chips">
 					<button type="button" class="chip" data-url="https://www.google.com/">Google 搜索</button>
@@ -61,7 +68,7 @@
 		</main>
 
 		<script>
-			document.querySelectorAll(".chip").forEach((btn) => {
+			document.querySelectorAll("[data-url]").forEach((btn) => {
 				btn.addEventListener("click", () => {
 					const input = document.getElementById("sj-address");
 					input.value = btn.dataset.url;
