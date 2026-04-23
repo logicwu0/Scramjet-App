@@ -34,18 +34,27 @@ function isFragileSubresource(request, routed) {
 
 async function handleRequest(event) {
 	const url = event.request.url;
+	const lowerUrl = url.toLowerCase();
 	const purpose = event.request.headers.get("Sec-Purpose") || event.request.headers.get("Purpose") || "";
 	await scramjet.loadConfig();
 	const routed = scramjet.route(event);
 	const fragile = isFragileSubresource(event.request, routed);
 	if (purpose.includes("prefetch")) {
-		console.log(`[SW] DROP prefetch ${url}`);
-		return new Response(null, { status: 204 });
+		const isChallengePath = lowerUrl.includes("/cdn-cgi/");
+		if (!isChallengePath) {
+			console.log(`[SW] DROP prefetch ${url}`);
+			return new Response(null, { status: 204 });
+		}
+		console.log(`[SW] KEEP prefetch challenge ${url}`);
 	}
 	console.log(`[SW] ${event.request.method} ${url} routed=${routed} fragile=${fragile}`);
 	try {
 		const res = routed ? await scramjet.fetch(event) : await fetch(event.request);
 		console.log(`[SW] <- ${res.status} ${url}`);
+		if (routed && lowerUrl.includes("/cdn-cgi/")) {
+			console.log(`[SW] challenge passthrough ${url}`);
+			return res;
+		}
 		const contentType = (res.headers.get("content-type") || "").toLowerCase();
 		const contentLike = contentType.includes("javascript") || contentType.includes("ecmascript") || contentType.includes("text/css");
 		if (fragile || contentLike) {
