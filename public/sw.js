@@ -3,24 +3,6 @@ importScripts("/scram/scramjet.all.js");
 const { ScramjetServiceWorker } = $scramjetLoadWorker();
 const scramjet = new ScramjetServiceWorker();
 
-const MAX_CONCURRENT_SCRAMJET = 4;
-let scramjetActive = 0;
-const scramjetQueue = [];
-function acquireScramjetSlot() {
-	if (scramjetActive < MAX_CONCURRENT_SCRAMJET) {
-		scramjetActive++;
-		return Promise.resolve();
-	}
-	return new Promise((resolve) => scramjetQueue.push(resolve));
-}
-function releaseScramjetSlot() {
-	if (scramjetQueue.length) {
-		scramjetQueue.shift()();
-	} else {
-		scramjetActive--;
-	}
-}
-
 function dumpError(prefix, err) {
 	if (!err) {
 		console.error(`${prefix} <no error object>`);
@@ -45,26 +27,9 @@ async function handleRequest(event) {
 	const url = event.request.url;
 	const routed = scramjet.route(event);
 	console.log(`[SW] ${event.request.method} ${url} routed=${routed}`);
-	if (routed) await acquireScramjetSlot();
-	const tFetch = Date.now();
-	if (routed && scramjetQueue.length) {
-		console.log(`[SW] queue depth=${scramjetQueue.length} active=${scramjetActive} url=${url}`);
-	}
-	let slotReleased = false;
-	const release = () => {
-		if (routed && !slotReleased) {
-			slotReleased = true;
-			releaseScramjetSlot();
-		}
-	};
 	try {
-		let res;
-		try {
-			res = routed ? await scramjet.fetch(event) : await fetch(event.request);
-		} finally {
-			release();
-		}
-		console.log(`[SW] <- ${res.status} ${url} fetchTime=${Date.now() - tFetch}ms`);
+		const res = routed ? await scramjet.fetch(event) : await fetch(event.request);
+		console.log(`[SW] <- ${res.status} ${url}`);
 		if (!routed || !res.body) return res;
 		const reader = res.body.getReader();
 		const t0 = Date.now();
@@ -100,7 +65,6 @@ async function handleRequest(event) {
 		});
 		return new Response(stream, { status: res.status, statusText: res.statusText, headers: res.headers });
 	} catch (err) {
-		release();
 		dumpError(`[SW] FAIL ${url}`, err);
 		throw err;
 	}
