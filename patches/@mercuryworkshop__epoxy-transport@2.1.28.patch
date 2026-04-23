@@ -13,7 +13,7 @@ index 9f103e46c4b79b25e5a51131763abeed6f6fce12..481a0a454f9380637f1c7bb54ef472fa
  ];
  var EpoxyTransport = class {
    ready = false;
-@@ -1495,16 +1497,54 @@ var EpoxyTransport = class {
+@@ -1495,16 +1497,55 @@ var EpoxyTransport = class {
    async request(remote, method, body, headers, signal) {
      if (body instanceof Blob)
        body = await body.arrayBuffer();
