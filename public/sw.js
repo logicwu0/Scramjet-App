@@ -24,10 +24,12 @@ function dumpError(prefix, err) {
 
 function isFragileSubresource(request, routed) {
 	if (!routed) return false;
-	const destination = request.destination || "";
-	if (destination !== "script" && destination !== "style") return false;
+	const destination = (request.destination || "").toLowerCase();
+	const secDest = (request.headers.get("sec-fetch-dest") || "").toLowerCase();
 	const url = request.url.toLowerCase();
-	return url.includes("mathjax") || url.includes("chunk-") || url.includes("vendors");
+	const destLike = destination === "script" || destination === "style" || secDest === "script" || secDest === "style";
+	const urlLike = /(?:\.|%2e)(?:m?js|css)(?:$|[?#])/.test(url) || url.includes("mathjax") || url.includes("chunk") || url.includes("vendor");
+	return destLike || urlLike;
 }
 
 async function handleRequest(event) {
@@ -36,7 +38,7 @@ async function handleRequest(event) {
 	await scramjet.loadConfig();
 	const routed = scramjet.route(event);
 	const fragile = isFragileSubresource(event.request, routed);
-	if (purpose.includes("prefetch") && !fragile) {
+	if (purpose.includes("prefetch") && !routed && !fragile) {
 		console.log(`[SW] DROP prefetch ${url}`);
 		return new Response(null, { status: 204 });
 	}
@@ -44,8 +46,10 @@ async function handleRequest(event) {
 	try {
 		const res = routed ? await scramjet.fetch(event) : await fetch(event.request);
 		console.log(`[SW] <- ${res.status} ${url}`);
-		if (fragile) {
-			console.log(`[SW] fragile passthrough ${url}`);
+		const contentType = (res.headers.get("content-type") || "").toLowerCase();
+		const contentLike = contentType.includes("javascript") || contentType.includes("ecmascript") || contentType.includes("text/css");
+		if (fragile || contentLike) {
+			console.log(`[SW] fragile/content passthrough ${url} ct=${contentType}`);
 			return res;
 		}
 		if (!routed || !res.body) return res;
