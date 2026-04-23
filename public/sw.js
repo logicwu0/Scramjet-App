@@ -38,7 +38,7 @@ async function handleRequest(event) {
 	await scramjet.loadConfig();
 	const routed = scramjet.route(event);
 	const fragile = isFragileSubresource(event.request, routed);
-	if (purpose.includes("prefetch") && !routed && !fragile) {
+	if (purpose.includes("prefetch")) {
 		console.log(`[SW] DROP prefetch ${url}`);
 		return new Response(null, { status: 204 });
 	}
