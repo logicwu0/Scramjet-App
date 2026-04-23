@@ -13,7 +13,7 @@ index 9f103e46c4b79b25e5a51131763abeed6f6fce12..481a0a454f9380637f1c7bb54ef472fa
  ];
  var EpoxyTransport = class {
    ready = false;
-@@ -1495,16 +1497,29 @@ var EpoxyTransport = class {
+@@ -1495,16 +1497,54 @@ var EpoxyTransport = class {
    async request(remote, method, body, headers, signal) {
      if (body instanceof Blob)
        body = await body.arrayBuffer();
@@ -32,10 +32,36 @@ index 9f103e46c4b79b25e5a51131763abeed6f6fce12..481a0a454f9380637f1c7bb54ef472fa
 +          throw bufErr;
 +        }
 +      }
++      let sanitizedHeaders = res.rawHeaders;
++      try {
++        const headerType = Object.prototype.toString.call(sanitizedHeaders);
++        const headerKeys = sanitizedHeaders && typeof sanitizedHeaders === "object" ? Object.keys(sanitizedHeaders) : null;
++        console.log(`${_tag} rawHeaders type=${headerType} keys=${headerKeys ? headerKeys.length : "n/a"}`);
++        console.log(`${_tag} rawHeaders dump:`, JSON.stringify(sanitizedHeaders));
++      } catch (dumpErr) {
++        console.warn(`${_tag} rawHeaders NOT STRINGIFIABLE:`, dumpErr && dumpErr.message);
++      }
++      if (sanitizedHeaders && typeof sanitizedHeaders === "object" && !Array.isArray(sanitizedHeaders)) {
++        const clean = {};
++        let dropped = 0;
++        for (const k of Object.keys(sanitizedHeaders)) {
++          if (k.toLowerCase() === "set-cookie") { dropped++; continue; }
++          clean[k] = sanitizedHeaders[k];
++        }
++        if (dropped > 0) console.log(`${_tag} STRIPPED set-cookie count=${dropped}`);
++        sanitizedHeaders = clean;
++      }
++      try {
++        structuredClone(sanitizedHeaders);
++        console.log(`${_tag} rawHeaders structuredClone OK`);
++      } catch (cloneErr) {
++        console.error(`${_tag} rawHeaders structuredClone FAIL:`, cloneErr && cloneErr.message);
++      }
        return {
 -        body: res.body,
 +        body: bufferedBody,
-         headers: res.rawHeaders,
+-        headers: res.rawHeaders,
++        headers: sanitizedHeaders,
          status: res.status,
          statusText: res.statusText
        };
