@@ -13,7 +13,7 @@ index 9f103e46c4b79b25e5a51131763abeed6f6fce12..481a0a454f9380637f1c7bb54ef472fa
  ];
  var EpoxyTransport = class {
    ready = false;
-@@ -1495,16 +1497,42 @@ var EpoxyTransport = class {
+@@ -1495,16 +1497,29 @@ var EpoxyTransport = class {
    async request(remote, method, body, headers, signal) {
      if (body instanceof Blob)
        body = await body.arrayBuffer();
@@ -22,32 +22,19 @@ index 9f103e46c4b79b25e5a51131763abeed6f6fce12..481a0a454f9380637f1c7bb54ef472fa
      try {
        let res = await this.client.fetch(remote.href, { method, body, headers, redirect: "manual" });
 +      console.log(`${_tag} fetch RESOLVED status=${res.status}`);
-+      let wrappedBody = res.body;
-+      if (wrappedBody instanceof ReadableStream) {
-+        const origBody = wrappedBody;
-+        wrappedBody = new ReadableStream({
-+          start(controller) {
-+            const reader = origBody.getReader();
-+            (async () => {
-+              try {
-+                while (true) {
-+                  const { done, value } = await reader.read();
-+                  if (done) break;
-+                  controller.enqueue(value);
-+                }
-+                controller.close();
-+                console.log(`${_tag} body DONE`);
-+              } catch (streamErr) {
-+                console.error(`${_tag} body STREAM ERROR:`, streamErr);
-+                try { controller.error(streamErr); } catch (_) {}
-+              }
-+            })();
-+          }
-+        });
++      let bufferedBody = res.body;
++      if (bufferedBody instanceof ReadableStream) {
++        try {
++          bufferedBody = await new Response(bufferedBody).arrayBuffer();
++          console.log(`${_tag} body BUFFERED bytes=${bufferedBody.byteLength}`);
++        } catch (bufErr) {
++          console.error(`${_tag} body BUFFER ERROR:`, bufErr);
++          throw bufErr;
++        }
 +      }
        return {
 -        body: res.body,
-+        body: wrappedBody,
++        body: bufferedBody,
          headers: res.rawHeaders,
          status: res.status,
          statusText: res.statusText
