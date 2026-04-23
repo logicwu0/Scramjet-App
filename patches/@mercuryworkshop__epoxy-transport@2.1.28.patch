@@ -41,11 +41,12 @@ index 9f103e46c4b79b25e5a51131763abeed6f6fce12..481a0a454f9380637f1c7bb54ef472fa
 +      } catch (dumpErr) {
 +        console.warn(`${_tag} rawHeaders NOT STRINGIFIABLE:`, dumpErr && dumpErr.message);
 +      }
++      const shouldStripSetCookie = remote.hostname === "mathscinet.ams.org";
 +      if (sanitizedHeaders && typeof sanitizedHeaders === "object" && !Array.isArray(sanitizedHeaders)) {
 +        const clean = {};
 +        let dropped = 0;
 +        for (const k of Object.keys(sanitizedHeaders)) {
-+          if (k.toLowerCase() === "set-cookie") { dropped++; continue; }
++          if (shouldStripSetCookie && k.toLowerCase() === "set-cookie") { dropped++; continue; }
 +          clean[k] = sanitizedHeaders[k];
 +        }
 +        if (dropped > 0) console.log(`${_tag} STRIPPED set-cookie count=${dropped}`);
