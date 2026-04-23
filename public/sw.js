@@ -22,19 +22,32 @@ function dumpError(prefix, err) {
 	if (err.cause) dumpError(`${prefix} [cause]`, err.cause);
 }
 
+function isFragileSubresource(request, routed) {
+	if (!routed) return false;
+	const destination = request.destination || "";
+	if (destination !== "script" && destination !== "style") return false;
+	const url = request.url.toLowerCase();
+	return url.includes("mathjax") || url.includes("chunk-") || url.includes("vendors");
+}
+
 async function handleRequest(event) {
 	const url = event.request.url;
 	const purpose = event.request.headers.get("Sec-Purpose") || event.request.headers.get("Purpose") || "";
-	if (purpose.includes("prefetch")) {
+	await scramjet.loadConfig();
+	const routed = scramjet.route(event);
+	const fragile = isFragileSubresource(event.request, routed);
+	if (purpose.includes("prefetch") && !fragile) {
 		console.log(`[SW] DROP prefetch ${url}`);
 		return new Response(null, { status: 204 });
 	}
-	await scramjet.loadConfig();
-	const routed = scramjet.route(event);
-	console.log(`[SW] ${event.request.method} ${url} routed=${routed}`);
+	console.log(`[SW] ${event.request.method} ${url} routed=${routed} fragile=${fragile}`);
 	try {
 		const res = routed ? await scramjet.fetch(event) : await fetch(event.request);
 		console.log(`[SW] <- ${res.status} ${url}`);
+		if (fragile) {
+			console.log(`[SW] fragile passthrough ${url}`);
+			return res;
+		}
 		if (!routed || !res.body) return res;
 		const reader = res.body.getReader();
 		const t0 = Date.now();
