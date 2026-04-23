@@ -23,8 +23,13 @@ function dumpError(prefix, err) {
 }
 
 async function handleRequest(event) {
-	await scramjet.loadConfig();
 	const url = event.request.url;
+	const purpose = event.request.headers.get("Sec-Purpose") || event.request.headers.get("Purpose") || "";
+	if (purpose.includes("prefetch")) {
+		console.log(`[SW] DROP prefetch ${url}`);
+		return new Response(null, { status: 204 });
+	}
+	await scramjet.loadConfig();
 	const routed = scramjet.route(event);
 	console.log(`[SW] ${event.request.method} ${url} routed=${routed}`);
 	try {
