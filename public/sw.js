@@ -35,6 +35,16 @@ function isFragileSubresource(request, routed) {
 async function handleRequest(event) {
 	const url = event.request.url;
 	const lowerUrl = url.toLowerCase();
+	const reqUrl = new URL(url);
+	if (
+		event.request.mode === "navigate" &&
+		event.request.headers.get("Sec-Fetch-Dest") === "document" &&
+		reqUrl.pathname.startsWith("/web/")
+	) {
+		const tail = reqUrl.pathname.slice("/web/".length) + reqUrl.search;
+		console.log(`[SW] top-level /web/ nav -> redirect to /#${tail}`);
+		return Response.redirect(`${reqUrl.origin}/#${tail}`, 302);
+	}
 	const purpose = event.request.headers.get("Sec-Purpose") || event.request.headers.get("Purpose") || "";
 	await scramjet.loadConfig();
 	const routed = scramjet.route(event);

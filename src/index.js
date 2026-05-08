@@ -39,6 +39,21 @@ const fastify = Fastify({
 	},
 });
 
+// Fallback for direct top-level navigations to /web/<encoded> (e.g. links opened
+// in a new tab) when no SW is registered yet — redirect to /#<encoded> so the
+// landing page can pick it up via the hash auto-restore path.
+fastify.addHook("onRequest", (req, reply, done) => {
+	if (
+		req.url.startsWith("/web/") &&
+		req.headers["sec-fetch-dest"] === "document" &&
+		req.headers["sec-fetch-mode"] === "navigate"
+	) {
+		const tail = req.url.slice("/web/".length);
+		return reply.redirect(`/#${tail}`, 302);
+	}
+	done();
+});
+
 fastify.register(fastifyStatic, {
 	root: publicPath,
 	decorateReply: true,
