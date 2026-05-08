@@ -14,6 +14,13 @@
 		<script src="/baremux/index.js"></script>
 
 		<link rel="stylesheet" href="index.css" />
+		<style>
+			html.has-hash { background: #fff; }
+			html.has-hash .landing { display: none; }
+		</style>
+		<script>
+			if (location.hash) document.documentElement.classList.add("has-hash");
+		</script>
 		<script src="register-sw.js" defer></script>
 		<script src="search.js" defer></script>
 		<script src="index.js" defer></script>

@@ -46,7 +46,7 @@ body {
 	font-size: 1.4rem;
 	color: #00838f;
 	letter-spacing: 0.12em;
-	transition: opacity 0.6s ease;
+	transition: opacity 0.1s ease;
 }
 
 .loading-overlay.is-hiding {
