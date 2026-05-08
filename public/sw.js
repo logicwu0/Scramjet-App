@@ -36,14 +36,17 @@ async function handleRequest(event) {
 	const url = event.request.url;
 	const lowerUrl = url.toLowerCase();
 	const reqUrl = new URL(url);
-	if (
-		event.request.mode === "navigate" &&
-		event.request.headers.get("Sec-Fetch-Dest") === "document" &&
-		reqUrl.pathname.startsWith("/web/")
-	) {
-		const tail = reqUrl.pathname.slice("/web/".length) + reqUrl.search;
-		console.log(`[SW] top-level /web/ nav -> redirect to /#${tail}`);
-		return Response.redirect(`${reqUrl.origin}/#${tail}`, 302);
+	if (event.request.mode === "navigate" && reqUrl.pathname.startsWith("/web/")) {
+		const dest = event.request.destination;
+		const sfd = event.request.headers.get("Sec-Fetch-Dest");
+		console.log(`[SW] /web/ nav inspect: dest=${dest} sfd=${sfd} clientId='${event.clientId}' resultingClientId='${event.resultingClientId}'`);
+		// Top-level new tab: destination is "document", existing clientId is empty.
+		// iframe internal nav: destination is "iframe" (don't redirect, let scramjet handle).
+		if (dest === "document") {
+			const tail = reqUrl.pathname.slice("/web/".length) + reqUrl.search;
+			console.log(`[SW] top-level /web/ nav -> redirect to /#${tail}`);
+			return Response.redirect(`${reqUrl.origin}/#${tail}`, 302);
+		}
 	}
 	const purpose = event.request.headers.get("Sec-Purpose") || event.request.headers.get("Purpose") || "";
 	await scramjet.loadConfig();
