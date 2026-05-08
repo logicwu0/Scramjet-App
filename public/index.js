@@ -53,10 +53,13 @@ function setLandingHidden(hidden) {
 }
 
 function createOverlay() {
-	const el = document.createElement("div");
-	el.className = "loading-overlay";
-	el.textContent = "加载中…";
-	document.body.appendChild(el);
+	let el = document.getElementById("initial-loading");
+	if (!el || !el.isConnected) {
+		el = document.createElement("div");
+		el.className = "loading-overlay";
+		el.textContent = "加载中…";
+		document.body.appendChild(el);
+	}
 	return {
 		hide() {
 			if (!el.isConnected) return;

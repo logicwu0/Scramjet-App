@@ -15,8 +15,10 @@
 
 		<link rel="stylesheet" href="index.css" />
 		<style>
-			html.has-hash { background: #fff; }
+			html.has-hash, html.has-hash body { background: #fff; }
 			html.has-hash .landing { display: none; }
+			#initial-loading { display: none; }
+			html.has-hash #initial-loading { display: flex; }
 		</style>
 		<script>
 			if (location.hash) document.documentElement.classList.add("has-hash");
@@ -27,6 +29,8 @@
 	</head>
 
 	<body>
+		<div class="loading-overlay" id="initial-loading">加载中…</div>
+
 		<main class="landing">
 			<header class="landing-header">
 				<h1 class="landing-title">建设全域知识共享平台</h1>
