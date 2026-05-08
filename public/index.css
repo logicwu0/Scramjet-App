@@ -31,7 +31,27 @@ body {
 	left: 0;
 	width: 100vw;
 	height: 100vh;
-	background-color: #111;
+	background-color: #fff;
+}
+
+.loading-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 10;
+	background: #fff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-family: inherit;
+	font-size: 1.4rem;
+	color: #00838f;
+	letter-spacing: 0.12em;
+	transition: opacity 0.6s ease;
+}
+
+.loading-overlay.is-hiding {
+	opacity: 0;
+	pointer-events: none;
 }
 
 #sj-error {

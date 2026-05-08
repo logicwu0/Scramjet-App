@@ -38,11 +38,22 @@ const connection = new BareMux.BareMuxConnection("/baremux/worker.js");
 form.addEventListener("submit", async (event) => {
 	event.preventDefault();
 
+	const overlay = document.createElement("div");
+	overlay.className = "loading-overlay";
+	overlay.textContent = "加载中…";
+	document.body.appendChild(overlay);
+	const hideOverlay = () => {
+		if (!overlay.isConnected) return;
+		overlay.classList.add("is-hiding");
+		setTimeout(() => overlay.remove(), 650);
+	};
+
 	try {
 		await registerSW();
 	} catch (err) {
 		error.textContent = "Failed to register service worker.";
 		errorCode.textContent = err.toString();
+		hideOverlay();
 		throw err;
 	}
 
@@ -87,11 +98,13 @@ form.addEventListener("submit", async (event) => {
 		});
 		error.textContent = "Failed to set transport.";
 		errorCode.textContent = err && err.toString ? err.toString() : String(err);
+		hideOverlay();
 		throw err;
 	}
 	console.log(`[nav] go -> ${url}`);
 	const frame = scramjet.createFrame();
 	frame.frame.id = "sj-frame";
+	frame.frame.addEventListener("load", hideOverlay, { once: true });
 	document.body.appendChild(frame.frame);
 	frame.go(url);
 });
