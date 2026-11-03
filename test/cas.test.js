@@ -436,3 +436,38 @@ test("remote HTTPS mock uses loopback validation without weakening cookies", asy
 		true
 	);
 });
+
+test("many authenticated Wisp connections are allowed and all revoked on logout", async (t) => {
+	const { app, auth } = await setup(t);
+	const cookie = await login(app);
+	const req = { url: "/wisp/", headers: { cookie, origin: config().origin } };
+	const sockets = Array.from({ length: 100 }, socket);
+	for (const s of sockets) assert.equal(auth.authorizeUpgrade(req, s), true);
+	const wrong = socket();
+	assert.equal(
+		auth.authorizeUpgrade(
+			{ ...req, headers: { cookie, origin: "https://wrong.example" } },
+			wrong
+		),
+		false
+	);
+	assert.match(wrong.denied, /403 Forbidden/);
+	const account = await app.inject({
+		url: "/auth/account",
+		headers: { cookie },
+	});
+	const csrf = account.body.match(/name="csrf" value="([^"]+)"/)[1];
+	const result = await app.inject({
+		method: "POST",
+		url: "/auth/logout",
+		headers: {
+			cookie,
+			origin: config().origin,
+			"content-type": "application/x-www-form-urlencoded",
+		},
+		payload: `csrf=${csrf}`,
+	});
+	assert.equal(result.statusCode, 303);
+	assert.ok(sockets.every((s) => s.destroyed));
+	assert.equal(auth.authorizeUpgrade(req, socket()), false);
+});

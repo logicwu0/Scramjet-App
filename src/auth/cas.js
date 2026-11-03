@@ -406,14 +406,16 @@ export function createCasAuth(
 	}
 	function authorizeUpgrade(req, socket) {
 		const session = sessionFor(req);
-		if (
-			req.url !== "/wisp/" ||
-			req.headers.origin !== config.origin ||
-			!session ||
-			session.sockets.size >= 8
-		) {
+		let denial;
+		if (req.url !== "/wisp/") denial = [404, "Not Found", "invalid_path"];
+		else if (req.headers.origin !== config.origin)
+			denial = [403, "Forbidden", "origin_mismatch"];
+		else if (!session) denial = [401, "Unauthorized", "session_required"];
+		if (denial) {
+			const [status, message, reason] = denial;
+			console.warn(`[auth] Wisp upgrade rejected: ${reason}`);
 			socket.end(
-				"HTTP/1.1 401 Unauthorized\r\nConnection: close\r\nContent-Length: 0\r\n\r\n"
+				`HTTP/1.1 ${status} ${message}\r\nX-WebVPN-Auth-Error: ${reason}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`
 			);
 			return false;
 		}

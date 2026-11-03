@@ -57,7 +57,7 @@ node --env-file=.env.ncu.local src/index.js
 
 - `/auth/login` 跳转 CAS；`/auth/callback` 验证浏览器绑定的 nonce，并由后端向 `/serviceValidate` 校验 ST，不收集学校密码。
 - 票据成功后创建随机服务器会话，正式模式 Cookie 使用 Secure、HttpOnly、SameSite=Lax；会话默认一小时，重启失效。
-- 未登录禁止访问应用资源、CA 下载接口和 Wisp；WebSocket 单独校验会话、Origin 和路径。退出或到期关闭现有连接，每会话最多八条连接。
+- 未登录禁止访问应用资源、CA 下载接口和 Wisp；WebSocket 单独校验会话、Origin 和路径。退出或到期关闭现有连接，不设置每会话的代理连接数上限。
 - `/auth/account` 提供退出表单；`/auth/logout` 校验来源和 CSRF 后销毁会话，再跳转 CAS 注销。
 - `/auth/slo?callback=jsonpcallback` 按文档返回 JSONP，校验回调名称，注销当前浏览器会话。
 - 可选在线检测向 `/login/userOnlineDetect` 提交原 service、ST 和用户名。定时任务每 30 秒尝试启动一轮、逐会话检测，不重叠执行；校验失败或 CAS 不可用会注销会话。用户较多或 CAS 慢时一轮可能超过 30 秒，当前不能承诺 30 秒内全量注销。
@@ -115,3 +115,18 @@ CAS_ONLINE_CHECK=0
 用同一配置分别启动应用和 `scripts/mock-cas.mjs`，模拟服务始终只监听回环地址。Nginx 的 `/cas/login` 和 `/cas/logout` 转发到模拟服务，其余应用路径转发到 8080，WebSocket 按需升级。票据校验通过 CAS_MOCK_BACKEND_URL 的回环通道进行，不需要将 `/cas/serviceValidate` 暴露公网。
 测试入口必须限制访问（如额外访问密码或测试来源 IP 白名单），覆盖页面、模拟登录和 WebSocket；模拟账户本身不验证身份。HTTPS 访问仍使用 Secure Cookie，不要为了部署将 CAS_LOCAL_TEST 设为 1。
 接入学校时，修改 CAS_BASE_URL 为学校地址，**删除 CAS_MOCK_BACKEND_URL**，关闭模拟认证服务及反向代理的模拟路径，再进行真实认证联调。现有来源隔离待办仍然适用。
+
+## WebSocket 认证兼容修复（2026-11-03）
+
+测试入口使用 Nginx Basic Auth 时，浏览器 WebSocket 可能不携带同源页面的 Basic 凭据。已复现：有效 CAS Cookie 的握手仍被 Nginx 返回 401 和 Basic challenge。Wisp 路径应交由应用校验会话与 Origin，不能再依赖弹窗认证：
+
+```nginx
+location = /wisp/ {
+    auth_basic off;
+    proxy_pass http://127.0.0.1:8080;
+    include snippets/ncu-proxy.conf;
+}
+```
+
+此例使用部署中的 ncu-proxy.conf 转发 Host、Upgrade、Connection 等头。应用必须保留 authorizeUpgrade；只有这个精确路径免除 Basic Auth，页面及模拟登录仍受测试入口保护。已验证无 Basic 凭据但带有效会话可以连接，退出断连和未登录拒绝继续有效。
+按用户要求移除原固定 8 条连接上限，不再新增每会话的连接数量限制。拒绝响应分别使用 401/session_required、403/origin_mismatch、404/invalid_path，并记录不包含 Cookie、票据或账号的原因。保留会话与来源校验以及退出断连。不能根据历史应用层 401 单独断言用户遇到的是连接数超限。
