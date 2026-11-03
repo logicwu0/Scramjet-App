@@ -36,6 +36,10 @@ async function handleRequest(event) {
 	const url = event.request.url;
 	const lowerUrl = url.toLowerCase();
 	const reqUrl = new URL(url);
+	// Authentication must bypass proxy processing and never log tickets or nonce URLs.
+	if (reqUrl.origin === self.location.origin && (reqUrl.pathname.startsWith("/auth/") || reqUrl.pathname.startsWith("/cas/"))) {
+		return fetch(event.request);
+	}
 	if (event.request.mode === "navigate" && reqUrl.pathname.startsWith("/web/")) {
 		const dest = event.request.destination;
 		const sfd = event.request.headers.get("Sec-Fetch-Dest");

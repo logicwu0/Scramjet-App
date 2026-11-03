@@ -5,6 +5,10 @@ import { hostname } from "node:os";
 import { server as wisp, logging } from "@mercuryworkshop/wisp-js/server";
 import Fastify from "fastify";
 import fastifyStatic from "@fastify/static";
+import { configFromEnv, createCasAuth } from "./auth/cas.js";
+
+const authConfig = configFromEnv();
+const auth = createCasAuth(authConfig);
 
 import { scramjetPath } from "@mercuryworkshop/scramjet/path";
 // import { libcurlPath } from "@mercuryworkshop/libcurl-transport";
@@ -16,10 +20,11 @@ const certsPath = fileURLToPath(new URL("../certs/cacert.pem", import.meta.url))
 
 // Wisp Configuration: Refer to the documentation at https://www.npmjs.com/package/@mercuryworkshop/wisp-js
 
-logging.set_level(logging.DEBUG);
+logging.set_level(logging.ERROR);
 Object.assign(wisp.options, {
 	allow_udp_streams: true,
-	allow_loopback_ips: true,
+	allow_loopback_ips: false,
+	allow_private_ips: false,
 	hostname_blacklist: [/example\.com/],
 	// dns_servers: ["1.1.1.3", "1.0.0.3"], // 使用系统 DNS，兼容 MITM 网关的解析
 });
@@ -33,11 +38,12 @@ const fastify = Fastify({
 				handler(req, res);
 			})
 			.on("upgrade", (req, socket, head) => {
-				if (req.url.endsWith("/wisp/")) wisp.routeRequest(req, socket, head);
-				else socket.end();
+				if (auth.authorizeUpgrade(req, socket)) wisp.routeRequest(req, socket, head);
 			});
 	},
 });
+
+auth.register(fastify);
 
 // Fallback for direct top-level navigations to /web/<encoded> (e.g. links opened
 // in a new tab) when no SW is registered yet — redirect to /#<encoded> so the
@@ -127,5 +133,5 @@ if (isNaN(port)) port = 8080;
 
 fastify.listen({
 	port: port,
-	host: "0.0.0.0",
+	host: process.env.HOST || "127.0.0.1",
 });

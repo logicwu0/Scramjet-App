@@ -6,3 +6,4 @@ scramjet/
 
 # certs are deployment-specific
 certs/*.pem
+.env.ncu.local

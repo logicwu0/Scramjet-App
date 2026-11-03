@@ -13,6 +13,9 @@ importers:
 
   .:
     dependencies:
+      saxes:
+        specifier: 6.0.0
+        version: 6.0.0
       '@fastify/static':
         specifier: ^8.2.0
         version: 8.2.0
@@ -46,6 +49,13 @@ importers:
         version: 3.3.3
 
 packages:
+
+  saxes@6.0.0:
+    resolution: {integrity: sha512-xAg7SOnEhrm5zI3puOOKyy1OMcMlIJZYNJY7xLBwSze0UjhPLnWfj2GF2EpT0jmzaJKIWKHLsaSSajf35bcYnA==}
+    engines: {node: '>=v12.22.7'}
+
+  xmlchars@2.2.0:
+    resolution: {integrity: sha512-JZnDKK8B0RCDw84FNdDAIpZK+JuJw+s7Lz8nksI7SIuU3UXJJslUthsi+uWBUYOwPFwW7W7PRLRfUKpxjtjFCw==}
 
   '@eslint-community/eslint-utils@4.4.1':
     resolution: {integrity: sha512-s3O3waFUrMV8P/XaF/+ZTp1X9XBZW1a4B97ZnjQF2KYWaFD2A8KyFBsrsfSjEmjn3RGWAIuvlneuZm3CUK3jbA==}
@@ -808,6 +818,12 @@ packages:
     engines: {node: '>=10'}
 
 snapshots:
+
+  saxes@6.0.0:
+    dependencies:
+      xmlchars: 2.2.0
+
+  xmlchars@2.2.0: {}
 
   '@eslint-community/eslint-utils@4.4.1(eslint@9.13.0)':
     dependencies:
