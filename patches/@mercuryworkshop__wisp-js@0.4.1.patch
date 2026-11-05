@@ -1,0 +1,31 @@
+diff --git a/src/server/net.mjs b/src/server/net.mjs
+--- a/src/server/net.mjs
++++ b/src/server/net.mjs
+@@ -142,7 +142,7 @@
+       });
+       this.socket.on("close", (error) => {
+         if (error && !this.connected) reject();
+-        else this.data_queue.close();
++        else this.data_queue.close(true);
+         this.socket = null;
+       });
+       this.socket.on("error", (error) => {
+diff --git a/src/websocket.mjs b/src/websocket.mjs
+--- a/src/websocket.mjs
++++ b/src/websocket.mjs
+@@ -114,7 +114,14 @@
+     return this.get_now();
+   }
+ 
+-  close() {
++  close(drain = false) {
++    if (drain) {
++      // A TCP EOF must follow bytes already received, including producers
++      // waiting for queue capacity. Their continuations run before this EOF.
++      for (const resume of this.put_callbacks.splice(0)) resume();
++      queueMicrotask(() => this.put_now(null));
++      return;
++    }
+     this.queue = [];
+     let callback;
+     //resolve all pending operations

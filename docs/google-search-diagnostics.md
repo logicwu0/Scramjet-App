@@ -9,3 +9,9 @@
 查看：journalctl -u webvpn --since '10 minutes ago' --no-pager | rg 'WebVPN search diagnostic'
 
 本次同时按用户要求恢复MathSciNet Set-Cookie过滤，与main的行为一致；不恢复响应头内容打印，不改证书选项、正文缓冲或依赖版本。
+
+## reCAPTCHA正文截断定位与修复
+
+同一服务器Wisp+Epoxy链路：google.com及recaptcha.net的api.js均完整200；gstatic recaptcha__en.js声明852683字节，原实现identity与identity-close分别只读802816、770048字节后IncompleteBody。隔离Wisp对照只改变TCP EOF处理，两次都完整852683字节。原AsyncQueue.close清空未消费字节；现TCP关闭调用close(true)，保留已有数据，释放等待入队的生产者，并将EOF排在这些字节之后。默认中断close语义不变。
+
+保留Wisp 0.4.1版本，通过pnpm补丁及锁文件管理；runtime-integrity覆盖net.mjs和websocket.mjs。新增队列满/积压/中断与真实1MiB慢消费者TCP测试。此修复解决已复现的脚本传输缺陷，不承诺消除Google风控或代表完整验证码交互已验收。
