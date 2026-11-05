@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   '@mercuryworkshop/epoxy-transport@2.1.28':
-    hash: 637e8aa86170a06b36b6fee4a19c2747ceec33edc5bb90fb4089603f77292dda
+    hash: 20c2ffb1163ac2c68b49b79e7e9e84278f4088431e40d424459feb47592100dc
     path: patches/@mercuryworkshop__epoxy-transport@2.1.28.patch
 
 importers:
@@ -21,7 +21,7 @@ importers:
         version: 2.1.7
       '@mercuryworkshop/epoxy-transport':
         specifier: ^2.1.28
-        version: 2.1.28(patch_hash=637e8aa86170a06b36b6fee4a19c2747ceec33edc5bb90fb4089603f77292dda)
+        version: 2.1.28(patch_hash=20c2ffb1163ac2c68b49b79e7e9e84278f4088431e40d424459feb47592100dc)
       '@mercuryworkshop/libcurl-transport':
         specifier: github:logicwu0/libcurl-transport
         version: https://codeload.github.com/logicwu0/libcurl-transport/tar.gz/cc3a225dec598054e4a7247fb284252d9a311516
@@ -926,7 +926,7 @@ snapshots:
 
   '@mercuryworkshop/epoxy-tls@2.1.18-1': {}
 
-  '@mercuryworkshop/epoxy-transport@2.1.28(patch_hash=637e8aa86170a06b36b6fee4a19c2747ceec33edc5bb90fb4089603f77292dda)':
+  '@mercuryworkshop/epoxy-transport@2.1.28(patch_hash=20c2ffb1163ac2c68b49b79e7e9e84278f4088431e40d424459feb47592100dc)':
     dependencies:
       '@mercuryworkshop/epoxy-tls': 2.1.18-1
 

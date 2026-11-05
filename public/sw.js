@@ -1,8 +1,10 @@
 importScripts("/scram/scramjet.all.js");
 importScripts("/proxy-headers.js");
+importScripts("/search-diagnostics.js");
 
 const { ScramjetServiceWorker } = $scramjetLoadWorker();
 const scramjet = new ScramjetServiceWorker();
+self.webvpnSearchDiagnostics(scramjet);
 
 scramjet.addEventListener("request", (event) => {
 	const repaired = self.webvpnNormalizeProxyHeaders(event.requestHeaders);

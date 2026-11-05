@@ -12,7 +12,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  ];
  var EpoxyTransport = class {
    ready = false;
-@@ -1495,16 +1497,29 @@
+@@ -1495,16 +1497,39 @@
    async request(remote, method, body, headers, signal) {
      if (body instanceof Blob)
        body = await body.arrayBuffer();
@@ -31,10 +31,21 @@ diff --git a/dist/index.mjs b/dist/index.mjs
 +          throw bufErr;
 +        }
 +      }
++      let sanitizedHeaders = res.rawHeaders;
++      const shouldStripSetCookie = remote.hostname === "mathscinet.ams.org";
++      if (sanitizedHeaders && typeof sanitizedHeaders === "object" && !Array.isArray(sanitizedHeaders)) {
++        const clean = {};
++        for (const k of Object.keys(sanitizedHeaders)) {
++          if (shouldStripSetCookie && k.toLowerCase() === "set-cookie") continue;
++          clean[k] = sanitizedHeaders[k];
++        }
++        sanitizedHeaders = clean;
++      }
        return {
 -        body: res.body,
+-        headers: res.rawHeaders,
 +        body: bufferedBody,
-         headers: res.rawHeaders,
++        headers: sanitizedHeaders,
          status: res.status,
          statusText: res.statusText
        };
