@@ -1,3 +1,4 @@
+// Diagnostic schema: captcha-v2 (no queries or credential values).
 importScripts("/scram/scramjet.all.js");
 importScripts("/proxy-headers.js");
 importScripts("/search-diagnostics.js");

@@ -9,3 +9,9 @@
 查看：journalctl -u webvpn --since '10 minutes ago' --no-pager | rg 'WebVPN search diagnostic'
 
 本次同时按用户要求恢复MathSciNet Set-Cookie过滤，与main的行为一致；不恢复响应头内容打印，不改证书选项、正文缓冲或依赖版本。
+
+## reCAPTCHA后续排查与回退
+
+服务器探针：验证码api.js完整200，gstatic主脚本200但正文IncompleteBody。隔离同进程Wisp/Epoxy可完整读取852683字节；实际应用跨进程链路仍截断。因此隔离测试有运行架构差异，不能证明用户浏览器故障就是Wisp队列；尝试的a379473补丁已由a01e77c撤回，不保留未验证有效的依赖修改。
+
+captcha-v2临时诊断增加验证码脚本/框架/验证提交类别：status=0表示请求发起，之后的HTTP状态表示响应处理完成。每worker最多40条、服务端每分钟最多60条。只保存域名、类别、枚举请求形态和Cookie数量，不保存site key、令牌、查询词、Cookie值和完整路径。缺少响应记录不等于已确定网络超时（也可能是代理处理异常或Worker退出）。等待实际受影响浏览器复现；其他用户验证码可用，不能概括为服务器整体不可达。
