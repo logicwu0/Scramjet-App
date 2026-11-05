@@ -6,16 +6,13 @@ settings:
 
 patchedDependencies:
   '@mercuryworkshop/epoxy-transport@2.1.28':
-    hash: e58cbe486dc2f74816fb23c484aab9a29c364728e8b27e480aa695126e95a4a4
+    hash: 637e8aa86170a06b36b6fee4a19c2747ceec33edc5bb90fb4089603f77292dda
     path: patches/@mercuryworkshop__epoxy-transport@2.1.28.patch
 
 importers:
 
   .:
     dependencies:
-      saxes:
-        specifier: 6.0.0
-        version: 6.0.0
       '@fastify/static':
         specifier: ^8.2.0
         version: 8.2.0
@@ -24,7 +21,7 @@ importers:
         version: 2.1.7
       '@mercuryworkshop/epoxy-transport':
         specifier: ^2.1.28
-        version: 2.1.28(patch_hash=e58cbe486dc2f74816fb23c484aab9a29c364728e8b27e480aa695126e95a4a4)
+        version: 2.1.28(patch_hash=637e8aa86170a06b36b6fee4a19c2747ceec33edc5bb90fb4089603f77292dda)
       '@mercuryworkshop/libcurl-transport':
         specifier: github:logicwu0/libcurl-transport
         version: https://codeload.github.com/logicwu0/libcurl-transport/tar.gz/cc3a225dec598054e4a7247fb284252d9a311516
@@ -37,6 +34,9 @@ importers:
       fastify:
         specifier: ^5.4.0
         version: 5.5.0
+      saxes:
+        specifier: 6.0.0
+        version: 6.0.0
       ws:
         specifier: ^8.18.3
         version: 8.18.3(bufferutil@4.1.0)(utf-8-validate@6.0.4)
@@ -49,13 +49,6 @@ importers:
         version: 3.3.3
 
 packages:
-
-  saxes@6.0.0:
-    resolution: {integrity: sha512-xAg7SOnEhrm5zI3puOOKyy1OMcMlIJZYNJY7xLBwSze0UjhPLnWfj2GF2EpT0jmzaJKIWKHLsaSSajf35bcYnA==}
-    engines: {node: '>=v12.22.7'}
-
-  xmlchars@2.2.0:
-    resolution: {integrity: sha512-JZnDKK8B0RCDw84FNdDAIpZK+JuJw+s7Lz8nksI7SIuU3UXJJslUthsi+uWBUYOwPFwW7W7PRLRfUKpxjtjFCw==}
 
   '@eslint-community/eslint-utils@4.4.1':
     resolution: {integrity: sha512-s3O3waFUrMV8P/XaF/+ZTp1X9XBZW1a4B97ZnjQF2KYWaFD2A8KyFBsrsfSjEmjn3RGWAIuvlneuZm3CUK3jbA==}
@@ -690,6 +683,10 @@ packages:
     resolution: {integrity: sha512-b3rppTKm9T+PsVCBEOUR46GWI7fdOs00VKZ1+9c1EWDaDMvjQc6tUwuFyIprgGgTcWoVHSKrU8H31ZHA2e0RHA==}
     engines: {node: '>=10'}
 
+  saxes@6.0.0:
+    resolution: {integrity: sha512-xAg7SOnEhrm5zI3puOOKyy1OMcMlIJZYNJY7xLBwSze0UjhPLnWfj2GF2EpT0jmzaJKIWKHLsaSSajf35bcYnA==}
+    engines: {node: '>=v12.22.7'}
+
   secure-json-parse@4.0.0:
     resolution: {integrity: sha512-dxtLJO6sc35jWidmLxo7ij+Eg48PM/kleBsxpC8QJE0qJICe+KawkDQmvCMZUr9u7WKVHgMW6vy3fQ7zMiFZMA==}
 
@@ -813,17 +810,14 @@ packages:
       utf-8-validate:
         optional: true
 
+  xmlchars@2.2.0:
+    resolution: {integrity: sha512-JZnDKK8B0RCDw84FNdDAIpZK+JuJw+s7Lz8nksI7SIuU3UXJJslUthsi+uWBUYOwPFwW7W7PRLRfUKpxjtjFCw==}
+
   yocto-queue@0.1.0:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
 snapshots:
-
-  saxes@6.0.0:
-    dependencies:
-      xmlchars: 2.2.0
-
-  xmlchars@2.2.0: {}
 
   '@eslint-community/eslint-utils@4.4.1(eslint@9.13.0)':
     dependencies:
@@ -932,7 +926,7 @@ snapshots:
 
   '@mercuryworkshop/epoxy-tls@2.1.18-1': {}
 
-  '@mercuryworkshop/epoxy-transport@2.1.28(patch_hash=e58cbe486dc2f74816fb23c484aab9a29c364728e8b27e480aa695126e95a4a4)':
+  '@mercuryworkshop/epoxy-transport@2.1.28(patch_hash=637e8aa86170a06b36b6fee4a19c2747ceec33edc5bb90fb4089603f77292dda)':
     dependencies:
       '@mercuryworkshop/epoxy-tls': 2.1.18-1
 
@@ -1468,6 +1462,10 @@ snapshots:
 
   safe-stable-stringify@2.5.0: {}
 
+  saxes@6.0.0:
+    dependencies:
+      xmlchars: 2.2.0
+
   secure-json-parse@4.0.0: {}
 
   semver@7.6.3: {}
@@ -1573,5 +1571,7 @@ snapshots:
     optionalDependencies:
       bufferutil: 4.1.0
       utf-8-validate: 6.0.4
+
+  xmlchars@2.2.0: {}
 
   yocto-queue@0.1.0: {}

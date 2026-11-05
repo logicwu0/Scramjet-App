@@ -1,7 +1,28 @@
 importScripts("/scram/scramjet.all.js");
+importScripts("/proxy-headers.js");
 
 const { ScramjetServiceWorker } = $scramjetLoadWorker();
 const scramjet = new ScramjetServiceWorker();
+
+scramjet.addEventListener("request", (event) => {
+	const repaired = self.webvpnNormalizeProxyHeaders(event.requestHeaders);
+	if (repaired.length) {
+		console.warn("[WebVPN] encoded non-ByteString cookie characters", { target: event.url.origin });
+	}
+	const invalid = Object.entries(event.requestHeaders)
+		.filter(([name, value]) => /[^\x00-\xff]/u.test(name + String(value)))
+		.map(([name]) => name);
+	if (invalid.length) {
+		// Only header names and target origin: never log cookie or credential values.
+		console.error("[WebVPN] invalid proxy header characters", { target: event.url.origin, headers: invalid });
+	}
+});
+
+scramjet.addEventListener("handleResponse", (event) => {
+	if (event.status === 401 || event.status === 403) {
+		console.warn("[WebVPN] upstream access response", { target: event.url.origin, status: event.status });
+	}
+});
 
 function dumpError(prefix, err) {
 	if (!err) {

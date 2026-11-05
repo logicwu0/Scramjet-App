@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { SaxesParser } from "saxes";
+import { sourceIp } from "../logging/security.js";
 
 const NS = "http://www.yale.edu/tp/cas";
 const random = () => randomBytes(32).toString("base64url");
@@ -62,6 +63,7 @@ export function configFromEnv(env = process.env) {
 		cas: cas.href,
 		mockBackend: mockBackend?.href,
 		local,
+		trustLoopbackProxy: env.SECURITY_TRUST_LOOPBACK_PROXY === "1",
 		ttl: seconds * 1000,
 		onlineCheck: env.CAS_ONLINE_CHECK === "1",
 		maxSessions: 2000,
@@ -136,8 +138,9 @@ export function parseValidation(xml) {
 
 export function createCasAuth(
 	config,
-	{ fetchImpl = fetch, now = Date.now } = {}
+	{ fetchImpl = fetch, now = Date.now, audit = () => {} } = {}
 ) {
+	const record = (event, req, session, fields = {}) => audit(event, { account: session?.username, sourceIp: sourceIp(req, config.trustLoopbackProxy), ...fields });
 	const sessions = new Map(),
 		pending = new Map();
 	const cookieName = config.local ? "webvpn_session" : "__Host-webvpn_session";
@@ -151,9 +154,10 @@ export function createCasAuth(
 			.filter((s) => s.startsWith(name + "="));
 		return values.length === 1 ? values[0].slice(name.length + 1) : "";
 	};
-	const revoke = (id) => {
+	const revoke = (id, reason) => {
 		const session = sessions.get(id);
 		if (!session) return;
+		if (reason) audit(reason === "expired" ? "session_expired" : "session_revoked", { account: session.username, sourceIp: session.sourceIp, result: "success", reason });
 		sessions.delete(id);
 		clearTimeout(session.timer);
 		for (const socket of session.sockets) socket.destroy();
@@ -161,7 +165,7 @@ export function createCasAuth(
 	const sweep = () => {
 		for (const [id, entry] of pending)
 			if (entry.expires <= now()) pending.delete(id);
-		for (const [id, entry] of sessions) if (entry.expires <= now()) revoke(id);
+		for (const [id, entry] of sessions) if (entry.expires <= now()) revoke(id, "expired");
 	};
 	let checking = false;
 	async function checkOnline() {
@@ -187,9 +191,9 @@ export function createCasAuth(
 					);
 					const data = await limitedBody(response);
 					const state = JSON.parse(data);
-					if (state.code !== 0 || state.data?.isAlive !== true) revoke(id);
+					if (state.code !== 0 || state.data?.isAlive !== true) revoke(id, "cas_offline");
 				} catch {
-					revoke(id);
+					revoke(id, "online_check_failed");
 				}
 			}
 		} finally {
@@ -205,7 +209,7 @@ export function createCasAuth(
 		const id = readCookie(req, cookieName),
 			session = sessions.get(id);
 		if (session && session.expires > now()) return session;
-		revoke(id);
+		revoke(id, "expired");
 		return null;
 	};
 	const clear = (req, reply) => {
@@ -252,12 +256,17 @@ export function createCasAuth(
 	}
 	function register(app) {
 		app.addHook("onRequest", async (req, reply) => {
+			const path = req.url.split("?")[0];
 			reply
 				.header("Cache-Control", "no-store")
-				.header("Referrer-Policy", "no-referrer");
-			const path = req.url.split("?")[0];
+				// Scramjet uses the portal's same-origin referrer to recognize
+				// top-level proxy navigation. Suppressing it makes Google see
+				// an iframe navigation with Sec-Fetch-Site: none and reject it.
+				// Authentication callbacks must still never disclose tickets.
+				.header("Referrer-Policy", path.startsWith("/auth/") ? "no-referrer" : "same-origin");
 			if (path.startsWith("/auth/")) return;
 			if (!sessionFor(req.raw)) {
+				record("access_denied", req.raw, null, { severity: "warning", result: "denied", reason: "session_required" });
 				if (req.method === "GET" && ["/", "/index.html"].includes(path))
 					return reply.redirect("/auth/login");
 				return reply
@@ -303,6 +312,7 @@ export function createCasAuth(
 				params.getAll("ticket").length !== 1 ||
 				!/^ST-[A-Za-z0-9._~-]{1,2048}$/.test(ticket || "")
 			) {
+				record("login_failure", req.raw, null, { severity: "warning", result: "failure", reason: "invalid_callback" });
 				return reply
 					.code(400)
 					.send("登录请求无效或已过期，请重新访问 /auth/login");
@@ -316,12 +326,13 @@ export function createCasAuth(
 				const sid = random();
 				const session = {
 					username,
+					sourceIp: sourceIp(req.raw, config.trustLoopbackProxy),
 					csrf: random(),
 					expires: now() + config.ttl,
 					sockets: new Set(),
 					...(config.onlineCheck ? { ticket, service: entry.service } : {}),
 				};
-				session.timer = setTimeout(() => revoke(sid), config.ttl);
+				session.timer = setTimeout(() => revoke(sid, "expired"), config.ttl);
 				session.timer.unref();
 				sessions.set(sid, session);
 				reply.header("Set-Cookie", [
@@ -331,6 +342,7 @@ export function createCasAuth(
 				return reply.redirect("/");
 			} catch {
 				// Never log the callback URL, ticket, XML response, or cookies.
+				record("login_failure", req.raw, null, { severity: "warning", result: "failure", reason: "cas_validation_failed" });
 				return reply
 					.code(502)
 					.send("统一认证校验未成功，请重新登录或联系管理员");
@@ -392,8 +404,10 @@ export function createCasAuth(
 				!session ||
 				req.headers.origin !== config.origin ||
 				params.get("csrf") !== session.csrf
-			)
+			) {
+				record("logout_rejected", req.raw, session, { severity: "warning", result: "denied", reason: "invalid_logout_request" });
 				return reply.code(403).send("退出请求无效");
+			}
 			clear(req.raw, reply);
 			const logout = new URL("logout", config.cas);
 			logout.searchParams.set(
@@ -413,12 +427,13 @@ export function createCasAuth(
 		else if (!session) denial = [401, "Unauthorized", "session_required"];
 		if (denial) {
 			const [status, message, reason] = denial;
-			console.warn(`[auth] Wisp upgrade rejected: ${reason}`);
+			record("proxy_rejected", req, session, { severity: "warning", result: "denied", reason });
 			socket.end(
 				`HTTP/1.1 ${status} ${message}\r\nX-WebVPN-Auth-Error: ${reason}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`
 			);
 			return false;
 		}
+		socket.once("error", () => record("proxy_error", req, session, { severity: "error", result: "failure", reason: "client_socket_error" }));
 		session.sockets.add(socket);
 		socket.once("close", () => session.sockets.delete(socket));
 		return true;
@@ -428,5 +443,8 @@ export function createCasAuth(
 		for (const id of sessions.keys()) revoke(id);
 		pending.clear();
 	}
-	return { register, authorizeUpgrade, close, checkOnline };
+	return { register, authorizeUpgrade, close, checkOnline, accessContext(req) {
+		const session = sessionFor(req);
+		return session ? { account: session.username, sourceIp: sourceIp(req, config.trustLoopbackProxy) } : null;
+	} };
 }

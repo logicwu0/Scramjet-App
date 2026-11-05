@@ -130,3 +130,11 @@ location = /wisp/ {
 
 此例使用部署中的 ncu-proxy.conf 转发 Host、Upgrade、Connection 等头。应用必须保留 authorizeUpgrade；只有这个精确路径免除 Basic Auth，页面及模拟登录仍受测试入口保护。已验证无 Basic 凭据但带有效会话可以连接，退出断连和未登录拒绝继续有效。
 按用户要求移除原固定 8 条连接上限，不再新增每会话的连接数量限制。拒绝响应分别使用 401/session_required、403/origin_mismatch、404/invalid_path，并记录不包含 Cookie、票据或账号的原因。保留会话与来源校验以及退出断连。不能根据历史应用层 401 单独断言用户遇到的是连接数超限。
+
+### 代理导航与 Referrer-Policy
+
+普通应用页面使用 `Referrer-Policy: same-origin`，认证路径保持 `no-referrer`（账户退出表单沿用同源策略）。不能对整个应用统一设置 `no-referrer`：锁定的 Scramjet 根据同源 referrer 区分门户发起的顶层代理导航与子框架导航；丢失该信息可能发送 `Sec-Fetch-Dest: iframe` 与 `Sec-Fetch-Site: none`。服务器对照中，该组合使 Google 翻译返回 403、Google 账号登录入口返回 401；改为顶层导航后分别返回 200、跳转到登录页 200。该验证不等于 Google 账号登录或所有子功能的兼容性验收。
+
+测试环境的 Basic Auth 只保护模拟 `/cas/login` 和 `/cas/logout`，不应叠加到全站代理内容。页面与 `/wisp/` 继续由应用校验 CAS 会话，模拟 CAS 服务仅回环监听。真实学校接入时关闭模拟服务和对应路由。
+
+应用通过 `public/proxy-headers.js` 兼容锁定 Cookie 解析器将百分号编码解码为 Unicode 的行为，在构造代理 Request 前重新编码 Cookie 中不符合 ByteString 的字符；不更换 Scramjet/Epoxy 版本，不修改其他认证请求头。

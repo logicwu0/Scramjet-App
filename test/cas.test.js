@@ -26,9 +26,10 @@ async function setup(
 	overrides = {}
 ) {
 	let time = Date.now();
+	const records = [];
 	const auth = createCasAuth(
 		{ ...config(), ...overrides },
-		{ fetchImpl, now: () => time }
+		{ fetchImpl, now: () => time, audit: (event, fields) => records.push({event, ...fields}) }
 	);
 	const app = Fastify();
 	auth.register(app);
@@ -38,6 +39,7 @@ async function setup(
 	return {
 		app,
 		auth,
+		records,
 		advance: (ms) => {
 			time += ms;
 		},
@@ -62,6 +64,24 @@ async function login(app) {
 	assert.equal(response.statusCode, 302);
 	return `webvpn_session=${cookieOf(response, "webvpn_session")}`;
 }
+
+test("portal retains same-origin navigation referrer while CAS callback hides its ticket", async (t) => {
+	const { app } = await setup(t);
+	const flow = await begin(app);
+	assert.equal(flow.res.headers["referrer-policy"], "no-referrer");
+	const callback = await app.inject({
+		url: flow.service.pathname + flow.service.search + "&ticket=ST-test",
+		headers: { cookie: flow.cookie },
+	});
+	assert.equal(callback.statusCode, 302);
+	assert.equal(callback.headers["referrer-policy"], "no-referrer");
+	const session = `webvpn_session=${cookieOf(callback, "webvpn_session")}`;
+	for (const url of ["/", "/api/cacert"]) {
+		const response = await app.inject({ url, headers: { cookie: session } });
+		assert.equal(response.statusCode, 200);
+		assert.equal(response.headers["referrer-policy"], "same-origin");
+	}
+});
 function socket() {
 	const s = new EventEmitter();
 	s.destroy = () => {
@@ -470,4 +490,28 @@ test("many authenticated Wisp connections are allowed and all revoked on logout"
 	assert.equal(result.statusCode, 303);
 	assert.ok(sockets.every((s) => s.destroyed));
 	assert.equal(auth.authorizeUpgrade(req, socket()), false);
+});
+
+
+test("audit logs failures but excludes successful login, logout and normal visits", async t => {
+ const {app,auth,records}=await setup(t,undefined,{trustLoopbackProxy:true});
+ await app.inject('/api/cacert');
+ await app.inject('/auth/callback?ticket=ST-secret&nonce=secret');
+ const cookie=await login(app);
+ assert.equal(auth.accessContext({headers:{cookie},socket:{remoteAddress:'192.0.2.20'}}).account,'student01');
+ const before=records.length;
+ await app.inject({url:'/api/cacert',headers:{cookie}});
+ assert.equal(records.length,before);
+ const account=await app.inject({url:'/auth/account',headers:{cookie}});
+ const csrf=account.body.match(/name="csrf" value="([^"]+)"/)[1];
+ const logout=await app.inject({method:'POST',url:'/auth/logout',headers:{cookie,origin:'http://127.0.0.1:8080','content-type':'application/x-www-form-urlencoded','x-real-ip':'192.0.2.9'},payload:new URLSearchParams({csrf}).toString()});
+ assert.equal(logout.statusCode,303);
+ assert.equal((await app.inject({url:'/auth/session',headers:{cookie}})).statusCode,401);
+ assert.ok(records.some(x=>x.event==='access_denied'));
+ assert.ok(records.some(x=>x.event==='login_failure'&&x.reason==='invalid_callback'));
+ assert.ok(!records.some(x=>x.event==='login_success'));
+ assert.ok(!records.some(x=>x.event==='logout_success'));
+ const ws=socket();auth.authorizeUpgrade({url:'/wisp/',headers:{origin:'http://127.0.0.1:8080'},socket:{remoteAddress:'192.0.2.10'}},ws);
+ assert.ok(records.some(x=>x.event==='proxy_rejected'&&x.reason==='session_required'));
+ assert.doesNotMatch(JSON.stringify(records),/ST-secret|csrf|webvpn_session|api\/cacert/);
 });

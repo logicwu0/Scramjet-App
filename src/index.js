@@ -5,10 +5,17 @@ import { hostname } from "node:os";
 import { server as wisp, logging } from "@mercuryworkshop/wisp-js/server";
 import Fastify from "fastify";
 import fastifyStatic from "@fastify/static";
+import { createAccessLogger, auditedSocket } from "./logging/access.js";
+import { createSecurityLogger, sourceIp } from "./logging/security.js";
 import { configFromEnv, createCasAuth } from "./auth/cas.js";
 
 const authConfig = configFromEnv();
-const auth = createCasAuth(authConfig);
+// The locked Wisp version exposes socket injection; resolve its native classes
+// relative to the installed ESM entry without changing the dependency.
+const { NodeTCPSocket, NodeUDPSocket } = await import(new URL("../server/net.mjs", import.meta.resolve("@mercuryworkshop/wisp-js/server")));
+const accessLog = createAccessLogger();
+const audit = createSecurityLogger();
+const auth = createCasAuth(authConfig, { audit });
 
 import { scramjetPath } from "@mercuryworkshop/scramjet/path";
 // import { libcurlPath } from "@mercuryworkshop/libcurl-transport";
@@ -38,12 +45,26 @@ const fastify = Fastify({
 				handler(req, res);
 			})
 			.on("upgrade", (req, socket, head) => {
-				if (auth.authorizeUpgrade(req, socket)) wisp.routeRequest(req, socket, head);
+				if (auth.authorizeUpgrade(req, socket)) {
+					const context = auth.accessContext(req);
+					if (!context) { socket.destroy(); return; }
+					try { wisp.routeRequest(req, socket, head, {
+						TCPSocket: auditedSocket(NodeTCPSocket, "tcp", context, accessLog),
+						UDPSocket: auditedSocket(NodeUDPSocket, "udp", context, accessLog),
+					}); }
+					catch {
+						audit("proxy_error", { sourceIp: sourceIp(req, authConfig.trustLoopbackProxy), severity: "error", result: "failure", reason: "upgrade_handler_failed" });
+						socket.destroy();
+					}
+				}
 			});
 	},
 });
 
 auth.register(fastify);
+fastify.addHook("onError", async (req) => {
+	audit("application_error", { sourceIp: sourceIp(req.raw, authConfig.trustLoopbackProxy), severity: "error", result: "failure", reason: "request_handler_error" });
+});
 
 // Fallback for direct top-level navigations to /web/<encoded> (e.g. links opened
 // in a new tab) when no SW is registered yet — redirect to /#<encoded> so the
@@ -104,6 +125,7 @@ fastify.setNotFoundHandler((res, reply) => {
 });
 
 fastify.server.on("listening", () => {
+	audit("service_started", { result: "success" });
 	const address = fastify.server.address();
 
 	// by default we are listening on 0.0.0.0 (every interface)
@@ -122,7 +144,7 @@ process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
 function shutdown() {
-	console.log("SIGTERM signal received: closing HTTP server");
+	audit("service_stopping", { result: "success" });
 	fastify.close();
 	process.exit(0);
 }

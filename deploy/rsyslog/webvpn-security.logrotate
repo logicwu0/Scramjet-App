@@ -1,0 +1,26 @@
+/var/log/webvpn/security.jsonl /var/log/webvpn/access.jsonl {
+    daily
+    maxsize 20M
+    rotate 14
+    missingok
+    notifempty
+    compress
+    delaycompress
+    su webvpn adm
+    create 0640 webvpn adm
+}
+/var/log/webvpn-security-syslog.log {
+    daily
+    maxsize 20M
+    rotate 14
+    missingok
+    notifempty
+    compress
+    delaycompress
+    su syslog adm
+    create 0640 syslog adm
+    sharedscripts
+    postrotate
+        /usr/bin/systemctl kill -s HUP rsyslog.service >/dev/null 2>&1 || true
+    endscript
+}
