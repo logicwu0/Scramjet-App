@@ -8,9 +8,6 @@ patchedDependencies:
   '@mercuryworkshop/epoxy-transport@2.1.28':
     hash: 20c2ffb1163ac2c68b49b79e7e9e84278f4088431e40d424459feb47592100dc
     path: patches/@mercuryworkshop__epoxy-transport@2.1.28.patch
-  '@mercuryworkshop/wisp-js@0.4.1':
-    hash: 8e5bf895d1b4c507fe2f25c6efcd0b937f04ed5250aaf7b8992e43bf1b1c1a08
-    path: patches/@mercuryworkshop__wisp-js@0.4.1.patch
 
 importers:
 
@@ -33,7 +30,7 @@ importers:
         version: https://github.com/MercuryWorkshop/scramjet/releases/download/latest/mercuryworkshop-scramjet-2.0.0-alpha.tgz
       '@mercuryworkshop/wisp-js':
         specifier: ^0.4.1
-        version: 0.4.1(patch_hash=8e5bf895d1b4c507fe2f25c6efcd0b937f04ed5250aaf7b8992e43bf1b1c1a08)(utf-8-validate@6.0.4)
+        version: 0.4.1(utf-8-validate@6.0.4)
       fastify:
         specifier: ^5.4.0
         version: 5.5.0

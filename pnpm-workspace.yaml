@@ -3,4 +3,3 @@ onlyBuiltDependencies:
 
 patchedDependencies:
   '@mercuryworkshop/epoxy-transport@2.1.28': patches/@mercuryworkshop__epoxy-transport@2.1.28.patch
-  '@mercuryworkshop/wisp-js@0.4.1': patches/@mercuryworkshop__wisp-js@0.4.1.patch

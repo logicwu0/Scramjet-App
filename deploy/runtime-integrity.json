@@ -1,6 +1,5 @@
 {
-  "node_modules/@mercuryworkshop/wisp-js/src/server/net.mjs": "7a18ba8b232bc70dcb19db1cf583c45793a2a68a93c473febc1ee51f4d2a5565",
+  "node_modules/@mercuryworkshop/wisp-js/src/server/net.mjs": "8a30dde861b414a7953a08bcb550070ca7b5583e3293810ec9e1a8e6c7eed6de",
   "node_modules/@mercuryworkshop/epoxy-transport/dist/index.mjs": "c315ba20f1127e8a9e171c2cd6047f15ecf98d0b15a30ba90099de65af469b3f",
-  "node_modules/@mercuryworkshop/scramjet/dist/scramjet.all.js": "1f385bc861efecc89ae5001299ba150d1e90611cd3a8ebe943c1a800c5e536c7",
-  "node_modules/@mercuryworkshop/wisp-js/src/websocket.mjs": "fe1e4a2f8b5f1e48cef1f624fbc65a03cc9fdbd56c20ba5af6fadc928eb80b28"
+  "node_modules/@mercuryworkshop/scramjet/dist/scramjet.all.js": "1f385bc861efecc89ae5001299ba150d1e90611cd3a8ebe943c1a800c5e536c7"
 }
