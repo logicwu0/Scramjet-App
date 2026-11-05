@@ -1,7 +1,12 @@
-// Diagnostic schema: captcha-v2 (no queries or credential values).
+// Diagnostic schema: captcha-v3 (no queries or credential values).
 importScripts("/scram/scramjet.all.js");
 importScripts("/proxy-headers.js");
 importScripts("/search-diagnostics.js");
+
+// This update keeps the same pinned proxy engine and storage schema.
+// Activate the compatible worker without requiring users to erase site data.
+self.addEventListener("install", event => event.waitUntil(self.skipWaiting()));
+self.addEventListener("activate", event => event.waitUntil(self.clients.claim()));
 
 const { ScramjetServiceWorker } = $scramjetLoadWorker();
 const scramjet = new ScramjetServiceWorker();

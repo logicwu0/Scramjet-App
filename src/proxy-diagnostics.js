@@ -13,7 +13,8 @@ export function registerProxyDiagnostics(app, origin, { write = console.warn, no
 		if (++count > 60) return reply.code(429).send();
 		const choice = (value, values) => values.includes(value) ? value : "unknown";
 		write("[WebVPN search diagnostic] " + JSON.stringify({
-			version: "captcha-v2", host: data.host, page: data.page, status: data.status,
+			version: "captcha-v3", host: data.host, page: data.page, status: data.status,
+			captchaOrigin: choice(data.captchaOrigin, ["portal", "google", "other", "missing", "invalid"]),
 			destination: choice(data.destination, ["document", "iframe", "empty"]),
 			site: choice(data.site, ["none", "same-origin", "same-site", "cross-site"]),
 			mode: choice(data.mode, ["navigate", "cors", "no-cors", "same-origin"]),

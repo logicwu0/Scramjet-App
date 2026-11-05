@@ -7,6 +7,16 @@ self.webvpnSearchDiagnostics = function (worker) {
 		if (reports++ >= 40) return;
 		void fetch("/api/proxy-diagnostics", {method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)}).catch(()=>{});
 	}
+	function captchaOrigin(url) {
+        const co = url.searchParams.get("co");
+        if (!co) return "missing";
+        try {
+            const decoded = new URL(atob(co.replace(/-/g,"+").replace(/_/g,"/").replace(/\./g,"=")));
+            if (decoded.origin === self.location.origin) return "portal";
+            if (["www.google.com","www.google.com.hk"].includes(decoded.hostname)) return "google";
+            return "other";
+        } catch { return "invalid"; }
+    }
 	function page(url) {
 		if (!["www.google.com", "www.google.com.hk", "www.recaptcha.net", "recaptcha.google.com", "www.gstatic.com"].includes(url.hostname)) return null;
         if (url.pathname.startsWith("/recaptcha/")) {
@@ -23,7 +33,7 @@ self.webvpnSearchDiagnostics = function (worker) {
 		const headers = Object.fromEntries(Object.entries(event.requestHeaders).map(([k,v]) => [k.toLowerCase(), String(v)]));
 		if (pending.size >= 32) pending.delete(pending.keys().next().value);
 		const data = {
-			host: event.url.hostname, page: kind,
+			host: event.url.hostname, page: kind, captchaOrigin: captchaOrigin(event.url),
 			destination: headers["sec-fetch-dest"], site: headers["sec-fetch-site"], mode: headers["sec-fetch-mode"],
 			hasAuthorization: Boolean(headers.authorization),
 			cookieCount: headers.cookie ? headers.cookie.split(";").filter(v => v.trim()).length : 0,

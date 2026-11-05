@@ -15,3 +15,5 @@
 服务器探针：验证码api.js完整200，gstatic主脚本200但正文IncompleteBody。隔离同进程Wisp/Epoxy可完整读取852683字节；实际应用跨进程链路仍截断。因此隔离测试有运行架构差异，不能证明用户浏览器故障就是Wisp队列；尝试的a379473补丁已由a01e77c撤回，不保留未验证有效的依赖修改。
 
 captcha-v2临时诊断增加验证码脚本/框架/验证提交类别：status=0表示请求发起，之后的HTTP状态表示响应处理完成。每worker最多40条、服务端每分钟最多60条。只保存域名、类别、枚举请求形态和Cookie数量，不保存site key、令牌、查询词、Cookie值和完整路径。缺少响应记录不等于已确定网络超时（也可能是代理处理异常或Worker退出）。等待实际受影响浏览器复现；其他用户验证码可用，不能概括为服务器整体不可达。
+
+用户随后报告“网站密钥的网域无效”，说明当前验证码失败至少包含域名校验，而非仅网速慢。captcha-v3只将验证码co参数解码后的origin分类为portal/google/other/missing/invalid，不记录参数或令牌；不修改co、不替换site key、不绕过校验。兼容当前锁定引擎的Service Worker更新使用skipWaiting/clients.claim，避免旧Worker一直等待导致诊断未生效。

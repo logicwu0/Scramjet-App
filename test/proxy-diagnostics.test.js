@@ -37,3 +37,14 @@ test('captcha endpoints report only category and omit site keys and tokens',()=>
  }
  assert.equal(sent.length,6);assert.doesNotMatch(JSON.stringify(sent),/private-key|releases|anchor|reload/);
 });
+test('captcha origin diagnostic reports classification, never the encoded origin',()=>{
+ const handlers={},sent=[];
+ const context={self:{location:{origin:'https://vpn.example'}},atob,URL,fetch:async(url,opts)=>{sent.push(JSON.parse(opts.body));return{};}};
+ vm.runInNewContext(readFileSync(new URL('../public/search-diagnostics.js',import.meta.url),'utf8'),context);
+ context.self.webvpnSearchDiagnostics({addEventListener:(type,fn)=>handlers[type]=fn});
+ for(const [origin,expected] of [['https://vpn.example:443','portal'],['https://www.google.com:443','google']]){
+  const url=new URL('https://www.google.com/recaptcha/api2/anchor');url.searchParams.set('co',btoa(origin).replace(/=/g,'.'));
+  handlers.request({url,requestHeaders:{}});assert.equal(sent.at(-1).captchaOrigin,expected);
+ }
+ assert.doesNotMatch(JSON.stringify(sent),/vpn.example|aHR0/);
+});
