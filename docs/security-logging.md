@@ -1,5 +1,7 @@
 # 认证与异常日志
 
+新增可选页面导航记录：启用 `NAVIGATION_LOG_ENABLED=1` 后，access.jsonl 还包含浏览器上报的脱敏页面 URL、Google 搜索词及推断的前页来源。此类记录标记 `record_type=navigation`，与下文原有 Wisp 连接记录分开理解；不转发 Syslog。配置、覆盖范围和可信度限制见 [navigation-logging.md](navigation-logging.md)。下文“不记录完整 URL”描述的是原有连接/安全日志，导航扩展也不会保存未经脱敏的逐字节原始 URL。
+
 安全日志仅记录认证失败与异常事件，不再记录登录成功及正常退出。另有仅本地保存的目标连接访问日志；两类日志均不记录完整 URL、密码、Cookie、CAS 票据或异常堆栈。学校 CAS 页面中输错密码的事件由学校记录，本应用记录的是回调无效、票据校验失败等本地可观察事件。
 
 环境变量：

@@ -38,6 +38,9 @@ const connection = new BareMux.BareMuxConnection("/baremux/worker.js");
 
 let currentFrame = null;
 let transportPromise = null;
+// Page-navigation logging is independent of the transport and remains opt-in.
+const navigationReporter = import("/navigation-log.mjs")
+	.then(module => module.startNavigationReporter()).catch(() => ({ observe() {} }));
 
 function hashFromUrl(url) {
 	return "#" + encodeURIComponent(url);
@@ -166,6 +169,7 @@ async function loadIntoFrame(url) {
 		const frame = scramjet.createFrame();
 		frame.frame.id = "sj-frame";
 		frame.addEventListener("urlchange", (ev) => {
+			void navigationReporter.then(reporter => reporter.observe(ev.url));
 			const newHash = hashFromUrl(ev.url);
 			if (location.hash !== newHash) {
 				history.replaceState({ url: ev.url }, "", newHash);

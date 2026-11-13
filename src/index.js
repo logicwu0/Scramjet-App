@@ -9,6 +9,7 @@ import { createAccessLogger, auditedSocket } from "./logging/access.js";
 import { createSecurityLogger, sourceIp } from "./logging/security.js";
 import { configFromEnv, createCasAuth } from "./auth/cas.js";
 import { registerProxyDiagnostics } from "./proxy-diagnostics.js";
+import { registerNavigationLogging } from "./logging/navigation.js";
 
 const authConfig = configFromEnv();
 // The locked Wisp version exposes socket injection; resolve its native classes
@@ -63,6 +64,7 @@ const fastify = Fastify({
 });
 
 auth.register(fastify);
+registerNavigationLogging(fastify, auth, authConfig.origin);
 registerProxyDiagnostics(fastify, authConfig.origin);
 fastify.addHook("onError", async (req) => {
 	audit("application_error", { sourceIp: sourceIp(req.raw, authConfig.trustLoopbackProxy), severity: "error", result: "failure", reason: "request_handler_error" });
