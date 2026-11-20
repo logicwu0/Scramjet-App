@@ -78,6 +78,11 @@ function watchSearchResults(frame, send) {
         for (const type of ['pointerdown','click','auxclick'])
             doc.addEventListener(type, handle, true);
     }
+    // Search results are clickable while the document is still interactive.
+    const timer = setInterval(() => {
+        if (!frame.isConnected) return clearInterval(timer);
+        if (document.visibilityState === 'visible') attach();
+    }, 200);
     frame.addEventListener('load', attach);
     attach();
 }
@@ -88,14 +93,6 @@ export async function startNavigationReporter() {
         if (!config.ok || !(await config.json()).enabled) return {observe() {}};
         const send = body => fetch('/api/navigation-log', {method:'POST', credentials:'same-origin', cache:'no-store',
                 headers:{'Content-Type':'application/json'}, body:JSON.stringify(body), keepalive:true});
-        navigator.serviceWorker?.addEventListener('message', event => {
-            if (event.source !== navigator.serviceWorker.controller || event.data?.type !== 'search-result-target') return;
-            const {source, url} = event.data;
-            const target = externalResultURL(url, source, location.origin);
-            if (target) send({event_id:crypto.randomUUID(), target_url:target.url, source_url:source,
-                source_relation:'search_result_click', url_redacted:target.redacted,
-                client_timestamp:new Date().toISOString()}).catch(() => {});
-        });
         return {...createNavigationReporter({initialSource:sourceFromReferrer(document.referrer, location.origin), send}),
             watchFrame: frame => watchSearchResults(frame, send)};
     } catch { return {observe() {}}; }
