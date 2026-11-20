@@ -40,7 +40,7 @@ export function externalResultURL(href, searchURL, portalOrigin) {
     } catch { return null; }
 }
 
-function watchSearchResults(frame, send) {
+function watchSearchResults(frame, send, remember) {
     const watched = new WeakSet();
     function attach() {
         const doc = frame.contentDocument;
@@ -69,7 +69,7 @@ function watchSearchResults(frame, send) {
                         redirect = new URL(decodeURIComponent(redirect.pathname.slice(5) + redirect.search));
                 } catch { return; }
                 if (redirect.origin === new URL(source).origin && ['/url','/goto'].includes(redirect.pathname))
-                    navigator.serviceWorker.controller?.postMessage({type:'search-result-redirect', url:redirect.href, source});
+                    remember(redirect.href, source);
             }
             if (chosen) Promise.resolve(send({event_id:crypto.randomUUID(), target_url:chosen.url,
                 source_url:source, source_relation:'search_result_click', url_redacted:chosen.redacted,
@@ -87,38 +87,95 @@ function watchSearchResults(frame, send) {
     attach();
 }
 
+// A popup starts with the exact Google relay in the portal hash. Exchange only
+// its digest between tabs. Clicks expire in memory and never change the link.
+function connectResultTabs(send) {
+    const clicks = new Map();
+    const channel = typeof BroadcastChannel === 'function' ? new BroadcastChannel('webvpn-result-click-v1') : null;
+    const nonce = crypto.randomUUID();
+    let active = null;
+    let timer;
+    async function digest(url) {
+        const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(url));
+        return Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2,'0')).join('');
+    }
+    function report() {
+        if (!active?.target || !active.source) return;
+        const {source,target} = active;
+        active = null;
+        clearTimeout(timer);
+        void send({event_id:crypto.randomUUID(), target_url:target.url, source_url:source,
+            source_relation:'search_result_click', url_redacted:target.redacted,
+            client_timestamp:new Date().toISOString()}).catch(() => {});
+    }
+    if (channel) channel.onmessage = ({data}) => {
+        if (data?.type === 'lookup') {
+            const source = clicks.get(data.key);
+            if (source) channel.postMessage({type:'found',key:data.key,source,nonce:data.nonce});
+        } else if (data?.type === 'found' && active?.key === data.key && data.nonce === nonce &&
+                   sanitizeNavigationURL(data.source)?.search_query && new URL(data.source).origin === active.origin) {
+            active.source = data.source;
+            report();
+        }
+    };
+    function remember(url, source) {
+        void digest(url).then(key => {
+            if (clicks.size >= 64) clicks.delete(clicks.keys().next().value);
+            clicks.set(key,source);
+            setTimeout(() => clicks.delete(key),60000);
+        }).catch(() => {});
+    }
+    function observe(value) {
+        if (!value) return;
+        let url;
+        try { url = new URL(value); } catch { return; }
+        if (['/url','/goto'].includes(url.pathname) && sanitizeNavigationURL(url.origin+'/search?q=x')?.search_query) {
+            if (active?.url === url.href) return;
+            const pending = active = {url:url.href,origin:url.origin};
+            clearTimeout(timer);
+            timer = setTimeout(() => {active=null;},60000);
+            void digest(url.href).then(key => {
+                if (active !== pending) return;
+                pending.key = key;
+                pending.source = clicks.get(key);
+                channel?.postMessage({type:'lookup',key,nonce});
+                report();
+            }).catch(() => {});
+        } else if (active && url.origin !== active.origin) {
+            active.target ??= sanitizeNavigationURL(value);
+            report();
+        } else if (sanitizeNavigationURL(value)?.search_query) {
+            active = null;
+        }
+    }
+    try { observe(decodeURIComponent(location.hash.slice(1))); } catch {}
+    return {remember, observe};
+}
+
 export async function startNavigationReporter() {
     try {
         const config = await fetch('/api/navigation-config', {credentials:'same-origin', cache:'no-store'});
         if (!config.ok || !(await config.json()).enabled) return {observe() {}};
         const send = body => fetch('/api/navigation-log', {method:'POST', credentials:'same-origin', cache:'no-store',
                 headers:{'Content-Type':'application/json'}, body:JSON.stringify(body), keepalive:true});
-        navigator.serviceWorker.addEventListener('message', event => {
-            if (event.source !== navigator.serviceWorker.controller || event.data?.type !== 'lookup-result-source') return;
-            let source = null;
-            try {
-                const page = sanitizeNavigationURL(decodeURIComponent(location.hash.slice(1)));
-                const doc = document.getElementById('sj-frame')?.contentDocument;
-                if (page?.search_query && doc) {
-                    for (const link of doc.querySelectorAll('a[href]')) {
-                        if (!link.querySelector('h3,[role="heading"]')) continue;
-                        let url = new URL(link.href, page.url);
-                        if (url.origin === location.origin && url.pathname.startsWith('/web/'))
-                            url = new URL(decodeURIComponent(url.pathname.slice(5) + url.search));
-                        if (url.href === event.data.url) { source = page.url; break; }
-                    }
-                }
-            } finally { event.ports[0]?.postMessage(source); }
-        });
+        const relay = connectResultTabs(send);
         const frames = new WeakSet();
         function attachFrame() {
             const frame = document.getElementById('sj-frame');
             if (!frame || frames.has(frame)) return;
             frames.add(frame);
-            watchSearchResults(frame, send);
+            watchSearchResults(frame, send, relay.remember);
+            frame.addEventListener('load', () => {
+                try {
+                    const loaded = new URL(frame.contentWindow.location.href);
+                    if (loaded.origin === location.origin && loaded.pathname.startsWith('/web/'))
+                        relay.observe(decodeURIComponent(loaded.pathname.slice(5) + loaded.search));
+                } catch {}
+            });
         }
         new MutationObserver(attachFrame).observe(document.body, {childList:true});
         attachFrame();
-        return createNavigationReporter({initialSource:sourceFromReferrer(document.referrer, location.origin), send});
+        const navigation = createNavigationReporter({initialSource:sourceFromReferrer(document.referrer, location.origin), send});
+        return {observe(url) { navigation.observe(url); relay.observe(url); }};
     } catch { return {observe() {}}; }
 }

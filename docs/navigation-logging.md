@@ -14,4 +14,4 @@ Google 默认识别 google.com、google.com.hk 等模块列出的常用域名 `/
 
 本次为本地开发；未自动修改学校服务器环境变量，真实学校/Google端到端访问仍需部署后验证。运行测试：`node --test test/navigation-log.test.js`。
 
-Google 搜索结果标题的点击另存为 source_relation=search_result_click，支持直接链接与可识别的 Google 中转链接。对不透明的中转地址，浏览器短暂关联该次点击与代理实际观察到的目标 URL。记录可按 source_search_query 查询，表示点击或跳转，不代表目标页面加载成功。
+Google 搜索结果点击由门户页面的独立日志模块观察。直接链接记录点击时的目标网址。新标签页通过中转链接摘要关联原搜索词，仅在能观察到目标页面时上报。无法读取的新窗口、下载或 PDF 可能只留下域名。代理请求、Service Worker 和认证流程不依赖这个模块。

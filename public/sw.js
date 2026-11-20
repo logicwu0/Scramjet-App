@@ -11,12 +11,6 @@ self.addEventListener("activate", event => event.waitUntil(self.clients.claim())
 const { ScramjetServiceWorker } = $scramjetLoadWorker();
 const scramjet = new ScramjetServiceWorker();
 self.webvpnSearchDiagnostics(scramjet);
-try {
-    importScripts('/navigation-policy-shared.js', '/search-result-log.js');
-    self.installSearchResultLog(scramjet);
-} catch {
-    // Optional logging must not prevent the proxy worker from starting.
-}
 
 scramjet.addEventListener("request", (event) => {
 	const repaired = self.webvpnNormalizeProxyHeaders(event.requestHeaders);
