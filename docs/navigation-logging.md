@@ -13,3 +13,5 @@ Google 默认识别 google.com、google.com.hk 等模块列出的常用域名 `/
 接口要求有效会话与精确同源 Origin；限制24KiB请求、每账号每分钟120条，事件ID短期去重，失败不阻断页面浏览。不把这些导航数据写入安全日志或 Syslog。日志后台升级后可按记录类型、搜索词和URL筛选。
 
 本次为本地开发；未自动修改学校服务器环境变量，真实学校/Google端到端访问仍需部署后验证。运行测试：`node --test test/navigation-log.test.js`。
+
+Google 搜索结果标题的点击另存为 source_relation=search_result_click，支持直接链接与可识别的 Google 中转链接。对不透明的中转地址，浏览器短暂关联该次点击与代理实际观察到的目标 URL。记录可按 source_search_query 查询，表示点击或跳转，不代表目标页面加载成功。

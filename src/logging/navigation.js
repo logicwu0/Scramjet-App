@@ -40,7 +40,8 @@ export function registerNavigationLogging(app, auth, origin, {
             target_host:target.host, target_url:target.url, source_url:source?.url || null,
             search_engine:target.search_engine, search_query:target.search_query,
             source_search_query:source?.search_query || null,
-            source_relation:source ? 'previous_page_inferred' : 'unknown',
+            source_relation:body.source_relation === 'search_result_click' && source?.search_query
+                ? 'search_result_click' : source ? 'previous_page_inferred' : 'unknown',
             url_redacted:target.redacted || body.url_redacted===true,
             client_timestamp:Number.isFinite(clientTime)?new Date(clientTime).toISOString():null};
         try { write(file,JSON.stringify(row)+'\n',{encoding:'utf8',mode:0o640}); }

@@ -176,6 +176,7 @@ async function loadIntoFrame(url) {
 			}
 		});
 		document.body.appendChild(frame.frame);
+		void navigationReporter.then(reporter => reporter.watchFrame?.(frame.frame));
 		setLandingHidden(true);
 		currentFrame = frame;
 	}

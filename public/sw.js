@@ -61,6 +61,39 @@ function isFragileSubresource(request, routed) {
 	return destLike || urlLike;
 }
 
+// Match only the exact, short-lived Google redirect selected in a portal tab.
+const resultClicks = new Map();
+self.addEventListener('message', event => {
+    const data = event.data;
+    if (data?.type !== 'search-result-redirect' || !event.source?.url ||
+        new URL(event.source.url).origin !== location.origin || new URL(event.source.url).pathname !== '/') return;
+    try {
+        const url = new URL(data.url), source = new URL(data.source);
+        if (url.href.length > 8192 || source.href.length > 8192 || url.origin !== source.origin ||
+            source.pathname !== '/search' || !source.searchParams.get('q') || !['/url','/goto'].includes(url.pathname)) return;
+        const click = {source:source.href, client:event.source};
+        if (resultClicks.size >= 256) resultClicks.delete(resultClicks.keys().next().value);
+        resultClicks.set(url.href, click);
+        setTimeout(() => { if (resultClicks.get(url.href) === click) resultClicks.delete(url.href); }, 60000);
+    } catch { /* Unrecognized relay URL. */ }
+});
+
+function proxyTarget(value) {
+    try {
+        const url = new URL(value, location.origin);
+        if (url.origin !== location.origin) return url.href;
+        if (url.pathname.startsWith('/web/')) return decodeURIComponent(url.pathname.slice(5) + url.search);
+        if (url.pathname === '/' && url.hash) return decodeURIComponent(url.hash.slice(1));
+    } catch {}
+    return '';
+}
+function reportRedirect(key, target) {
+    const click = resultClicks.get(key);
+    if (!click || !target || new URL(target).origin === new URL(click.source).origin) return;
+    resultClicks.delete(key);
+    click.client.postMessage({type:'search-result-target', source:click.source, url:target});
+}
+
 async function handleRequest(event) {
 	const url = event.request.url;
 	const lowerUrl = url.toLowerCase();
@@ -101,6 +134,18 @@ async function handleRequest(event) {
 			console.log(`[SW] challenge passthrough ${url}`);
 			return res;
 		}
+        if (resultClicks.size && routed && event.request.mode === 'navigate') {
+            try {
+                const target = proxyTarget(url);
+                if (res.status >= 300 && res.status < 400 && res.headers.has('location'))
+                    reportRedirect(target, proxyTarget(res.headers.get('location')));
+                reportRedirect(proxyTarget(event.request.referrer), target);
+                if (event.clientId && resultClicks.size) {
+                    const client = await self.clients.get(event.clientId);
+                    if (client) reportRedirect(proxyTarget(client.url), target);
+                }
+            } catch { /* Optional logging must never interrupt the response. */ }
+        }
 		const contentType = (res.headers.get("content-type") || "").toLowerCase();
 		const contentLike = contentType.includes("javascript") || contentType.includes("ecmascript") || contentType.includes("text/css");
 		if (fragile || contentLike) {

@@ -26,14 +26,77 @@ export function createNavigationReporter({send, initialSource = null, now = Date
     }};
 }
 
+// Read the result link before Google replaces it with its outbound tracking URL.
+export function externalResultURL(href, searchURL, portalOrigin) {
+    if (!sanitizeNavigationURL(searchURL)?.search_query || !href) return null;
+    try {
+        let target = new URL(href, searchURL);
+        if (target.origin === portalOrigin && target.pathname.startsWith('/web/'))
+            target = new URL(decodeURIComponent(target.pathname.slice(5) + target.search));
+        if (target.origin === new URL(searchURL).origin && target.pathname === '/url')
+            target = new URL(target.searchParams.get('url') || target.searchParams.get('q'));
+        if (target.origin === new URL(searchURL).origin || target.origin === portalOrigin) return null;
+        return sanitizeNavigationURL(target.href);
+    } catch { return null; }
+}
+
+function watchSearchResults(frame, send) {
+    const watched = new WeakSet();
+    function attach() {
+        const doc = frame.contentDocument;
+        if (!doc || watched.has(doc)) return;
+        watched.add(doc);
+        let pressed;
+        function handle(event) {
+            if (!event.isTrusted || event.button > 1) return;
+            const link = event.target.closest?.('a[href]');
+            if (!link || !link.querySelector('h3,[role="heading"]')) return;
+            const source = sanitizeNavigationURL(decodeURIComponent(location.hash.slice(1)))?.url;
+            if (!source || !sanitizeNavigationURL(source)?.search_query) return;
+            const target = externalResultURL(link.href, source, location.origin);
+            if (event.type === 'pointerdown') {
+                pressed = {link, source, target, time:Date.now()};
+                return;
+            }
+            const chosen = pressed?.link === link && pressed.source === source &&
+                Date.now() - pressed.time < 10000 ? pressed.target || target : target;
+            pressed = null;
+            if (!chosen) {
+                let redirect;
+                try {
+                    redirect = new URL(link.href, source);
+                    if (redirect.origin === location.origin && redirect.pathname.startsWith('/web/'))
+                        redirect = new URL(decodeURIComponent(redirect.pathname.slice(5) + redirect.search));
+                } catch { return; }
+                if (redirect.origin === new URL(source).origin && ['/url','/goto'].includes(redirect.pathname))
+                    navigator.serviceWorker.controller?.postMessage({type:'search-result-redirect', url:redirect.href, source});
+            }
+            if (chosen) Promise.resolve(send({event_id:crypto.randomUUID(), target_url:chosen.url,
+                source_url:source, source_relation:'search_result_click', url_redacted:chosen.redacted,
+                client_timestamp:new Date().toISOString()})).catch(() => {});
+        }
+        for (const type of ['pointerdown','click','auxclick'])
+            doc.addEventListener(type, handle, true);
+    }
+    frame.addEventListener('load', attach);
+    attach();
+}
+
 export async function startNavigationReporter() {
     try {
         const config = await fetch('/api/navigation-config', {credentials:'same-origin', cache:'no-store'});
         if (!config.ok || !(await config.json()).enabled) return {observe() {}};
-        return createNavigationReporter({
-            initialSource:sourceFromReferrer(document.referrer, location.origin),
-            send: body => fetch('/api/navigation-log', {method:'POST', credentials:'same-origin', cache:'no-store',
-                headers:{'Content-Type':'application/json'}, body:JSON.stringify(body), keepalive:true}),
+        const send = body => fetch('/api/navigation-log', {method:'POST', credentials:'same-origin', cache:'no-store',
+                headers:{'Content-Type':'application/json'}, body:JSON.stringify(body), keepalive:true});
+        navigator.serviceWorker?.addEventListener('message', event => {
+            if (event.source !== navigator.serviceWorker.controller || event.data?.type !== 'search-result-target') return;
+            const {source, url} = event.data;
+            const target = externalResultURL(url, source, location.origin);
+            if (target) send({event_id:crypto.randomUUID(), target_url:target.url, source_url:source,
+                source_relation:'search_result_click', url_redacted:target.redacted,
+                client_timestamp:new Date().toISOString()}).catch(() => {});
         });
+        return {...createNavigationReporter({initialSource:sourceFromReferrer(document.referrer, location.origin), send}),
+            watchFrame: frame => watchSearchResults(frame, send)};
     } catch { return {observe() {}}; }
 }

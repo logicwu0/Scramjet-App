@@ -50,3 +50,12 @@ test('navigation API remains off without explicit switch; write failures are vis
  assert.equal(res.statusCode,enabled?503:204);
  }
 });
+
+test('Google result clicks decode direct and wrapped links but never log opaque relays as targets', async () => {
+ const {externalResultURL} = await import('../public/navigation-log.mjs');
+ const source='https://www.google.com.hk/search?q=RFC2606', portal='https://vpn.example';
+ const target='https://dl.acm.org/doi/pdf/RFC2606?token=secret';
+ for(const link of [target, portal+'/web/'+encodeURIComponent(target), '/url?q='+encodeURIComponent(target)])
+  assert.equal(externalResultURL(link,source,portal).url,'https://dl.acm.org/doi/pdf/RFC2606');
+ assert.equal(externalResultURL('/goto?url=opaque',source,portal),null);
+});
