@@ -1,7 +1,6 @@
 // Diagnostic schema: captcha-v3 (no queries or credential values).
 importScripts("/scram/scramjet.all.js");
 importScripts("/proxy-headers.js");
-importScripts("/navigation-policy-shared.js");
 importScripts("/search-diagnostics.js");
 
 // This update keeps the same pinned proxy engine and storage schema.
@@ -12,6 +11,12 @@ self.addEventListener("activate", event => event.waitUntil(self.clients.claim())
 const { ScramjetServiceWorker } = $scramjetLoadWorker();
 const scramjet = new ScramjetServiceWorker();
 self.webvpnSearchDiagnostics(scramjet);
+try {
+    importScripts('/navigation-policy-shared.js', '/search-result-log.js');
+    self.installSearchResultLog(scramjet);
+} catch {
+    // Optional logging must not prevent the proxy worker from starting.
+}
 
 scramjet.addEventListener("request", (event) => {
 	const repaired = self.webvpnNormalizeProxyHeaders(event.requestHeaders);
@@ -62,81 +67,6 @@ function isFragileSubresource(request, routed) {
 	return destLike || urlLike;
 }
 
-// Match only the exact, short-lived Google redirect selected in a portal tab.
-const resultClicks = new Map();
-self.addEventListener('message', event => {
-    const data = event.data;
-    if (data?.type !== 'search-result-redirect' || !event.source?.url ||
-        new URL(event.source.url).origin !== location.origin || new URL(event.source.url).pathname !== '/') return;
-    try {
-        const url = new URL(data.url), source = new URL(data.source);
-        if (url.href.length > 8192 || source.href.length > 8192 || url.origin !== source.origin ||
-            source.pathname !== '/search' || !source.searchParams.get('q') || !['/url','/goto'].includes(url.pathname)) return;
-        const click = {source:source.href};
-        if (resultClicks.size >= 256) resultClicks.delete(resultClicks.keys().next().value);
-        resultClicks.set(url.href, click);
-        setTimeout(() => { if (resultClicks.get(url.href) === click) resultClicks.delete(url.href); }, 60000);
-    } catch { /* Unrecognized relay URL. */ }
-});
-
-function proxyTarget(value) {
-    try {
-        const url = new URL(value, location.origin);
-        if (url.origin !== location.origin) return url.href;
-        if (url.pathname.startsWith('/web/')) return decodeURIComponent(url.pathname.slice(5) + url.search);
-        if (url.pathname === '/' && url.hash) return decodeURIComponent(url.hash.slice(1));
-    } catch {}
-    return '';
-}
-function searchClickContext(request, target) {
-    const ref = proxyTarget(request.referrer);
-    const source = self.webvpnSanitizeNavigationURL(ref);
-    if (source?.search_query && target && new URL(target).origin === new URL(source.url).origin &&
-        ['/url','/goto'].includes(new URL(target).pathname) && request.method === 'GET')
-        return {source:source.url};
-    return resultClicks.get(target) || resultClicks.get(ref);
-}
-
-async function findResultSource(target) {
-    const relay = new URL(target);
-    if (!['/goto','/url'].includes(relay.pathname) ||
-        !self.webvpnSanitizeNavigationURL(relay.origin + '/search?q=test')?.search_query) return;
-    const tabs = (await self.clients.matchAll({type:'window'})).filter(client => {
-        const current = new URL(client.url);
-        return current.pathname === '/' && current.origin === location.origin;
-    });
-    const sources = await Promise.all(tabs.map(client => new Promise(resolve => {
-        const channel = new MessageChannel();
-        function done(value) { clearTimeout(timer); channel.port1.close(); resolve(value); }
-        const timer = setTimeout(() => done(null), 700);
-        channel.port1.onmessage = event => done(event.data);
-        client.postMessage({type:'lookup-result-source', url:target}, [channel.port2]);
-    })));
-    const matches = new Set(sources.filter(value => value &&
-        self.webvpnSanitizeNavigationURL(value)?.search_query && new URL(value).origin === relay.origin));
-    if (matches.size === 1) return {source:[...matches][0]};
-}
-
-function rememberRelay(target, context) {
-    if (!context || !target || target.length > 8192) return;
-    const url = new URL(target);
-    if (url.origin !== new URL(context.source).origin || !['/url','/goto'].includes(url.pathname)) return;
-    if (resultClicks.size >= 256) resultClicks.delete(resultClicks.keys().next().value);
-    resultClicks.set(target, context);
-    setTimeout(() => { if (resultClicks.get(target) === context) resultClicks.delete(target); }, 60000);
-}
-
-function reportRedirect(context, value) {
-    if (!context || !value || context.reported) return;
-    const target = self.webvpnSanitizeNavigationURL(value);
-    if (!target || new URL(target.url).origin === new URL(context.source).origin) return;
-    context.reported = true;
-    return fetch('/api/navigation-log', {method:'POST', credentials:'same-origin', keepalive:true,
-        headers:{'Content-Type':'application/json'}, body:JSON.stringify({event_id:crypto.randomUUID(),
-            source_url:context.source, target_url:target.url, source_relation:'search_result_click',
-            url_redacted:target.redacted, client_timestamp:new Date().toISOString()})}).catch(() => {});
-}
-
 async function handleRequest(event) {
 	const url = event.request.url;
 	const lowerUrl = url.toLowerCase();
@@ -145,16 +75,6 @@ async function handleRequest(event) {
 	if (reqUrl.origin === self.location.origin && (reqUrl.pathname.startsWith("/auth/") || reqUrl.pathname.startsWith("/cas/"))) {
 		return fetch(event.request);
 	}
-    const navigationTarget = event.request.mode === 'navigate' && reqUrl.pathname.startsWith('/web/')
-        ? proxyTarget(url) : '';
-    let clickContext;
-    if (navigationTarget) {
-        try {
-            clickContext = searchClickContext(event.request, navigationTarget);
-            if (!clickContext) clickContext = await findResultSource(navigationTarget);
-            rememberRelay(navigationTarget, clickContext);
-        } catch { /* Malformed proxy URL. */ }
-    }
 	if (event.request.mode === "navigate" && reqUrl.pathname.startsWith("/web/")) {
 		const dest = event.request.destination;
 		const sfd = event.request.headers.get("Sec-Fetch-Dest");
@@ -187,23 +107,6 @@ async function handleRequest(event) {
 			console.log(`[SW] challenge passthrough ${url}`);
 			return res;
 		}
-        if (routed && navigationTarget) {
-            try {
-                clickContext ||= resultClicks.get(navigationTarget);
-                if (!clickContext && event.clientId) {
-                    const client = await self.clients.get(event.clientId);
-                    if (client) clickContext = resultClicks.get(proxyTarget(client.url));
-                }
-                if (clickContext) {
-                    let target = navigationTarget;
-                    if (res.status >= 300 && res.status < 400 && res.headers.has('location'))
-                        target = proxyTarget(res.headers.get('location'));
-                    rememberRelay(target, clickContext);
-                    const report = reportRedirect(clickContext, target);
-                    if (report) event.waitUntil(report);
-                }
-            } catch { /* Optional logging must never interrupt the response. */ }
-        }
 		const contentType = (res.headers.get("content-type") || "").toLowerCase();
 		const contentLike = contentType.includes("javascript") || contentType.includes("ecmascript") || contentType.includes("text/css");
 		if (fragile || contentLike) {

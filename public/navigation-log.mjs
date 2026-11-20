@@ -110,7 +110,15 @@ export async function startNavigationReporter() {
                 }
             } finally { event.ports[0]?.postMessage(source); }
         });
-        return {...createNavigationReporter({initialSource:sourceFromReferrer(document.referrer, location.origin), send}),
-            watchFrame: frame => watchSearchResults(frame, send)};
+        const frames = new WeakSet();
+        function attachFrame() {
+            const frame = document.getElementById('sj-frame');
+            if (!frame || frames.has(frame)) return;
+            frames.add(frame);
+            watchSearchResults(frame, send);
+        }
+        new MutationObserver(attachFrame).observe(document.body, {childList:true});
+        attachFrame();
+        return createNavigationReporter({initialSource:sourceFromReferrer(document.referrer, location.origin), send});
     } catch { return {observe() {}}; }
 }
