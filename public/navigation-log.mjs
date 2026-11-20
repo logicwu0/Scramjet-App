@@ -93,6 +93,23 @@ export async function startNavigationReporter() {
         if (!config.ok || !(await config.json()).enabled) return {observe() {}};
         const send = body => fetch('/api/navigation-log', {method:'POST', credentials:'same-origin', cache:'no-store',
                 headers:{'Content-Type':'application/json'}, body:JSON.stringify(body), keepalive:true});
+        navigator.serviceWorker.addEventListener('message', event => {
+            if (event.source !== navigator.serviceWorker.controller || event.data?.type !== 'lookup-result-source') return;
+            let source = null;
+            try {
+                const page = sanitizeNavigationURL(decodeURIComponent(location.hash.slice(1)));
+                const doc = document.getElementById('sj-frame')?.contentDocument;
+                if (page?.search_query && doc) {
+                    for (const link of doc.querySelectorAll('a[href]')) {
+                        if (!link.querySelector('h3,[role="heading"]')) continue;
+                        let url = new URL(link.href, page.url);
+                        if (url.origin === location.origin && url.pathname.startsWith('/web/'))
+                            url = new URL(decodeURIComponent(url.pathname.slice(5) + url.search));
+                        if (url.href === event.data.url) { source = page.url; break; }
+                    }
+                }
+            } finally { event.ports[0]?.postMessage(source); }
+        });
         return {...createNavigationReporter({initialSource:sourceFromReferrer(document.referrer, location.origin), send}),
             watchFrame: frame => watchSearchResults(frame, send)};
     } catch { return {observe() {}}; }

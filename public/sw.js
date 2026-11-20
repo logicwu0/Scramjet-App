@@ -97,6 +97,26 @@ function searchClickContext(request, target) {
     return resultClicks.get(target) || resultClicks.get(ref);
 }
 
+async function findResultSource(target) {
+    const relay = new URL(target);
+    if (!['/goto','/url'].includes(relay.pathname) ||
+        !self.webvpnSanitizeNavigationURL(relay.origin + '/search?q=test')?.search_query) return;
+    const tabs = (await self.clients.matchAll({type:'window'})).filter(client => {
+        const current = new URL(client.url);
+        return current.pathname === '/' && current.origin === location.origin;
+    });
+    const sources = await Promise.all(tabs.map(client => new Promise(resolve => {
+        const channel = new MessageChannel();
+        function done(value) { clearTimeout(timer); channel.port1.close(); resolve(value); }
+        const timer = setTimeout(() => done(null), 700);
+        channel.port1.onmessage = event => done(event.data);
+        client.postMessage({type:'lookup-result-source', url:target}, [channel.port2]);
+    })));
+    const matches = new Set(sources.filter(value => value &&
+        self.webvpnSanitizeNavigationURL(value)?.search_query && new URL(value).origin === relay.origin));
+    if (matches.size === 1) return {source:[...matches][0]};
+}
+
 function rememberRelay(target, context) {
     if (!context || !target || target.length > 8192) return;
     const url = new URL(target);
@@ -131,6 +151,7 @@ async function handleRequest(event) {
     if (navigationTarget) {
         try {
             clickContext = searchClickContext(event.request, navigationTarget);
+            if (!clickContext) clickContext = await findResultSource(navigationTarget);
             rememberRelay(navigationTarget, clickContext);
         } catch { /* Malformed proxy URL. */ }
     }
